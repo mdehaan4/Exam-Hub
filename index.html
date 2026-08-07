@@ -575,6 +575,15 @@
   .race-lobby-actions{ display:flex; flex-direction:column; gap:10px; }
   .race-step{ display:flex; flex-direction:column; gap:8px; padding-bottom:14px; border-bottom:1px solid var(--biz-border); }
   .race-step:last-child{ border-bottom:none; padding-bottom:0; }
+  .race-step details{ display:flex; flex-direction:column; gap:8px; }
+  .race-fallback-toggle{
+    cursor:pointer;
+    font-size:11.5px;
+    font-weight:600;
+    color:var(--biz-sub);
+    padding-top:2px;
+  }
+  .race-fallback-toggle:hover{ color:var(--biz-accent); }
   .race-code{
     width:100%;
     min-height:64px;
@@ -864,7 +873,7 @@
   </div>
 
   <div class="race-card" id="raceViewLobby">
-    <p class="race-lead">Race a friend head-to-head on the same 10 questions. No account needed — one of you hosts, the other joins, by swapping two short text codes.</p>
+    <p class="race-lead">Race a friend head-to-head on the same 10 questions. No account needed — one of you hosts, the other joins, by swapping two links.</p>
     <div class="race-lobby-actions">
       <button class="hub-start" id="btnRaceHost" type="button">Host a Race</button>
       <button class="hub-start hub-start-secondary" id="btnRaceJoin" type="button">Join a Race</button>
@@ -874,13 +883,17 @@
 
   <div class="race-card" id="raceViewHost" style="display:none">
     <div class="race-step">
-      <p class="race-lead">1. Copy this code and send it to your opponent (chat, text, email — however you like).</p>
-      <textarea class="race-code" id="raceHostOfferCode" readonly rows="4"></textarea>
-      <button class="hub-start" id="btnCopyHostOffer" type="button">Copy Code</button>
+      <p class="race-lead">1. Send this invite link to your opponent (chat, text, email — however you like). Opening it fills in their side automatically.</p>
+      <button class="hub-start" id="btnCopyHostLink" type="button">Copy Invite Link</button>
+      <details>
+        <summary class="race-fallback-toggle">Link not working? Copy the code instead</summary>
+        <textarea class="race-code" id="raceHostOfferCode" readonly rows="3"></textarea>
+        <button class="hub-start hub-start-secondary" id="btnCopyHostOffer" type="button">Copy Code</button>
+      </details>
     </div>
     <div class="race-step">
-      <p class="race-lead">2. Paste the reply code your opponent sends back, then connect.</p>
-      <textarea class="race-code" id="raceHostAnswerInput" rows="4" placeholder="Paste your opponent's reply code here"></textarea>
+      <p class="race-lead">2. Paste the reply your opponent sends back (their link or code both work), then connect.</p>
+      <textarea class="race-code" id="raceHostAnswerInput" rows="4" placeholder="Paste your opponent's reply link or code here"></textarea>
       <button class="hub-start" id="btnRaceHostConnect" type="button">Connect</button>
     </div>
     <p class="race-status" id="raceHostStatus"></p>
@@ -888,14 +901,18 @@
 
   <div class="race-card" id="raceViewJoin" style="display:none">
     <div class="race-step">
-      <p class="race-lead">1. Paste the code your opponent sent you, then generate your reply.</p>
-      <textarea class="race-code" id="raceJoinOfferInput" rows="4" placeholder="Paste the host's code here"></textarea>
-      <button class="hub-start" id="btnRaceJoinGenerate" type="button">Generate Reply Code</button>
+      <p class="race-lead">1. If you opened an invite link, this is already filled in — just generate your reply. Otherwise paste the code your opponent sent.</p>
+      <textarea class="race-code" id="raceJoinOfferInput" rows="4" placeholder="Paste the host's link or code here"></textarea>
+      <button class="hub-start" id="btnRaceJoinGenerate" type="button">Generate Reply</button>
     </div>
     <div class="race-step" id="raceJoinStep2" style="display:none">
-      <p class="race-lead">2. Copy this reply code and send it back to your opponent.</p>
-      <textarea class="race-code" id="raceJoinAnswerCode" readonly rows="4"></textarea>
-      <button class="hub-start" id="btnCopyJoinAnswer" type="button">Copy Code</button>
+      <p class="race-lead">2. Send this reply link back to your opponent.</p>
+      <button class="hub-start" id="btnCopyJoinLink" type="button">Copy Reply Link</button>
+      <details>
+        <summary class="race-fallback-toggle">Link not working? Copy the code instead</summary>
+        <textarea class="race-code" id="raceJoinAnswerCode" readonly rows="3"></textarea>
+        <button class="hub-start hub-start-secondary" id="btnCopyJoinAnswer" type="button">Copy Code</button>
+      </details>
     </div>
     <p class="race-status" id="raceJoinStatus"></p>
   </div>
@@ -3819,6 +3836,38 @@
     }
   }
 
+  function raceCopyText(text, btn){
+    const finish = ()=>{
+      if(!btn) return;
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(()=>{ btn.textContent = orig; }, 1200);
+    };
+    const fallback = ()=>{
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); finish(); }catch(e){}
+      document.body.removeChild(ta);
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(finish).catch(fallback);
+    } else {
+      fallback();
+    }
+  }
+
+  const RACE_LINK_MARKER = '#race=';
+  function raceBuildLink(code){
+    return location.origin + location.pathname + RACE_LINK_MARKER + encodeURIComponent(code);
+  }
+  function raceExtractCode(input){
+    input = input.trim();
+    const idx = input.indexOf(RACE_LINK_MARKER);
+    if(idx !== -1) return decodeURIComponent(input.slice(idx + RACE_LINK_MARKER.length));
+    return input;
+  }
+
   function raceSetStatus(id, text, isError){
     const el = document.getElementById(id);
     el.textContent = text;
@@ -3892,10 +3941,9 @@
       await racePC.setLocalDescription(offer);
       await waitIceGatherComplete(racePC);
       const code = await compressToCode(racePC.localDescription);
-      const codeEl = document.getElementById('raceHostOfferCode');
-      codeEl.value = code;
-      raceCopyTextarea('raceHostOfferCode', null);
-      raceSetStatus('raceHostStatus', 'Code copied to your clipboard — send it to your opponent.');
+      document.getElementById('raceHostOfferCode').value = code;
+      raceCopyText(raceBuildLink(code), null);
+      raceSetStatus('raceHostStatus', 'Invite link copied to your clipboard — send it to your opponent.');
     }catch(err){
       raceSetStatus('raceHostStatus', 'Could not create connection: ' + err.message, true);
     }
@@ -3903,14 +3951,14 @@
 
   async function raceHostConnect(){
     const input = document.getElementById('raceHostAnswerInput').value;
-    if(!input.trim()){ raceSetStatus('raceHostStatus', "Paste your opponent's reply code first.", true); return; }
+    if(!input.trim()){ raceSetStatus('raceHostStatus', "Paste your opponent's reply link or code first.", true); return; }
     try{
-      const desc = await decodeFromCode(input);
+      const desc = await decodeFromCode(raceExtractCode(input));
       await racePC.setRemoteDescription(desc);
       raceSetStatus('raceHostStatus', 'Connecting…');
       raceWatchConnection('raceHostStatus');
     }catch(err){
-      raceSetStatus('raceHostStatus', 'That code looks invalid: ' + err.message, true);
+      raceSetStatus('raceHostStatus', "That reply looks invalid or incomplete. Ask your opponent to use the Copy Reply Link button and paste the whole thing.", true);
     }
   }
 
@@ -3933,9 +3981,9 @@
 
   async function raceJoinGenerate(){
     const input = document.getElementById('raceJoinOfferInput').value;
-    if(!input.trim()){ raceSetStatus('raceJoinStatus', "Paste the host's code first.", true); return; }
+    if(!input.trim()){ raceSetStatus('raceJoinStatus', "Paste the host's link or code first.", true); return; }
     try{
-      const desc = await decodeFromCode(input);
+      const desc = await decodeFromCode(raceExtractCode(input));
       await racePC.setRemoteDescription(desc);
       const answer = await racePC.createAnswer();
       await racePC.setLocalDescription(answer);
@@ -3943,11 +3991,11 @@
       const code = await compressToCode(racePC.localDescription);
       document.getElementById('raceJoinAnswerCode').value = code;
       document.getElementById('raceJoinStep2').style.display = 'flex';
-      raceCopyTextarea('raceJoinAnswerCode', null);
-      raceSetStatus('raceJoinStatus', 'Reply code copied to your clipboard — send it back to your opponent, then wait here.');
+      raceCopyText(raceBuildLink(code), null);
+      raceSetStatus('raceJoinStatus', 'Reply link copied to your clipboard — send it back to your opponent, then wait here.');
       raceWatchConnection('raceJoinStatus');
     }catch(err){
-      raceSetStatus('raceJoinStatus', 'That code looks invalid: ' + err.message, true);
+      raceSetStatus('raceJoinStatus', "That invite looks invalid or incomplete. Ask your opponent to use the Copy Invite Link button and send the whole link.", true);
     }
   }
 
@@ -4082,9 +4130,11 @@
 
   document.getElementById('btnRaceHost').addEventListener('click', raceStartHost);
   document.getElementById('btnRaceJoin').addEventListener('click', raceStartJoin);
+  document.getElementById('btnCopyHostLink').addEventListener('click', function(){ raceCopyText(raceBuildLink(document.getElementById('raceHostOfferCode').value), this); });
   document.getElementById('btnCopyHostOffer').addEventListener('click', function(){ raceCopyTextarea('raceHostOfferCode', this); });
   document.getElementById('btnRaceHostConnect').addEventListener('click', raceHostConnect);
   document.getElementById('btnRaceJoinGenerate').addEventListener('click', raceJoinGenerate);
+  document.getElementById('btnCopyJoinLink').addEventListener('click', function(){ raceCopyText(raceBuildLink(document.getElementById('raceJoinAnswerCode').value), this); });
   document.getElementById('btnCopyJoinAnswer').addEventListener('click', function(){ raceCopyTextarea('raceJoinAnswerCode', this); });
   document.getElementById('btnRaceStart').addEventListener('click', btnRaceStartClick);
   document.getElementById('btnRaceRematch').addEventListener('click', raceRematch);
@@ -4103,7 +4153,7 @@
     exam: 'All 20 questions, one at a time, with the correct answer and an explanation shown after each. Finishes with a pass/fail score and a topic-by-topic breakdown.',
     penalty: 'Football penalty shootout style: a best-of-5 shootout sampled at random. Pick the goal zone showing the correct answer to score — pick wrong and the keeper saves it. Nothing is lost either way.',
     pacman: 'Pac-Man style: navigate a maze through 10 questions sampled at random. Eat the answer node with the correct text — wrong guesses are shown, but nothing is lost. Dodge the ghosts along the way.',
-    race: 'Head-to-head against a friend on the same 10 questions in real time — one of you hosts, the other joins, by swapping two short codes. No account needed. Works only on the GitHub Pages version of this app, not this preview.',
+    race: 'Head-to-head against a friend on the same 10 questions in real time — one of you hosts, the other joins, by swapping two links. No account needed. Works only on the GitHub Pages version of this app, not this preview.',
   };
   function updateHubDesc(){
     hubDescEl.textContent = HUB_DESCRIPTIONS[selMode.value];
@@ -4121,7 +4171,21 @@
     else startExam(subject);
   });
 
-  showScreen('hub');
+  const incomingRaceCode = (function(){
+    if(!raceSupported() || location.hash.indexOf(RACE_LINK_MARKER)!==0) return null;
+    const code = raceExtractCode(location.hash);
+    try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){}
+    return code;
+  })();
+
+  if(incomingRaceCode){
+    raceStartJoin();
+    document.getElementById('raceJoinOfferInput').value = incomingRaceCode;
+    raceJoinGenerate();
+    showScreen('race');
+  } else {
+    showScreen('hub');
+  }
   requestAnimationFrame(frame);
 })();
 </script>
