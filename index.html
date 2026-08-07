@@ -552,6 +552,77 @@
   .cat-bar-fill{ height:100%; border-radius:3px; }
   .results-actions{ width:100%; display:flex; gap:10px; padding:0 20px 20px; }
   .results-actions .hub-start{ flex:1; margin-top:0; box-shadow:none; }
+
+  /* ---------- online race mode ---------- */
+  .race{
+    width:min(94vw, 600px);
+    font-family:var(--font-sans);
+    color:var(--biz-ink);
+    background:var(--biz-surface);
+    border-radius:14px;
+    overflow:hidden;
+    box-shadow:0 24px 60px rgba(2,4,12,.55), 0 0 0 1px rgba(15,23,42,.04);
+    display:flex;
+    flex-direction:column;
+  }
+  .race-card{
+    padding:24px 20px;
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+  }
+  .race-lead{ margin:0; font-size:13px; line-height:1.6; color:var(--biz-sub); }
+  .race-lobby-actions{ display:flex; flex-direction:column; gap:10px; }
+  .race-step{ display:flex; flex-direction:column; gap:8px; padding-bottom:14px; border-bottom:1px solid var(--biz-border); }
+  .race-step:last-child{ border-bottom:none; padding-bottom:0; }
+  .race-code{
+    width:100%;
+    min-height:64px;
+    resize:vertical;
+    font-family:var(--font-mono);
+    font-size:11px;
+    line-height:1.5;
+    color:var(--biz-ink);
+    background:var(--biz-surface-2);
+    border:1px solid var(--biz-border);
+    border-radius:8px;
+    padding:10px 12px;
+    word-break:break-all;
+  }
+  .race-code:focus{ outline:none; border-color:var(--biz-accent); box-shadow:0 0 0 4px var(--biz-accent-dim); }
+  .race-status{ margin:0; font-size:13px; font-weight:600; color:var(--biz-navy); text-align:center; }
+  .race-status.error{ color:var(--biz-fail); }
+  .race-progress-row{ display:flex; gap:16px; }
+  .race-progress-side{ flex:1; display:flex; flex-direction:column; gap:5px; }
+  .race-progress-label{ font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--biz-sub); }
+  .race-opp-fill{ background:linear-gradient(90deg, var(--biz-amber), #f59e0b) !important; }
+  .race-results-grid{ display:flex; gap:14px; padding:20px; }
+  .race-result-card{
+    flex:1;
+    padding:16px;
+    border-radius:10px;
+    border:1px solid var(--biz-border);
+    background:var(--biz-surface-2);
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    text-align:center;
+  }
+  .race-result-card.winner{ border-color:var(--biz-pass); background:var(--biz-pass-bg); }
+  .race-result-name{ font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--biz-sub); }
+  .race-result-score{ font-size:26px; font-weight:800; color:var(--biz-navy); }
+  .race-result-detail{ font-size:11.5px; color:var(--biz-sub); }
+  .race-winner-banner{
+    margin:20px 20px 0;
+    text-align:center;
+    font-size:15px;
+    font-weight:800;
+    letter-spacing:.02em;
+    color:var(--biz-pass);
+    padding:10px;
+    border-radius:8px;
+    background:var(--biz-pass-bg);
+  }
 </style>
 
 <div class="hub" id="hubScreen">
@@ -582,6 +653,7 @@
         <option value="arcade">Space Invaders Arcade Mode</option>
         <option value="penalty">Football Arcade Mode</option>
         <option value="pacman">Pac-Man Arcade Mode</option>
+        <option value="race">Online Multiplayer Race</option>
       </select>
     </label>
     <p class="hub-desc" id="hubDesc"></p>
@@ -780,6 +852,96 @@
         <button class="ctrl-btn dpad-btn" id="btnPacDown">▼</button>
         <button class="ctrl-btn dpad-btn" id="btnPacRight">►</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="race" id="raceScreen" style="display:none">
+  <div class="exam-topbar">
+    <button class="corner-btn-inline" id="btnRaceHub" type="button">← Exit</button>
+    <div class="exam-title">Online Multiplayer Race</div>
+    <div style="width:44px"></div>
+  </div>
+
+  <div class="race-card" id="raceViewLobby">
+    <p class="race-lead">Race a friend head-to-head on the same 10 questions. No account needed — one of you hosts, the other joins, by swapping two short text codes.</p>
+    <div class="race-lobby-actions">
+      <button class="hub-start" id="btnRaceHost" type="button">Host a Race</button>
+      <button class="hub-start hub-start-secondary" id="btnRaceJoin" type="button">Join a Race</button>
+    </div>
+    <p class="race-status error" id="raceLobbyStatus" style="display:none"></p>
+  </div>
+
+  <div class="race-card" id="raceViewHost" style="display:none">
+    <div class="race-step">
+      <p class="race-lead">1. Copy this code and send it to your opponent (chat, text, email — however you like).</p>
+      <textarea class="race-code" id="raceHostOfferCode" readonly rows="4"></textarea>
+      <button class="hub-start" id="btnCopyHostOffer" type="button">Copy Code</button>
+    </div>
+    <div class="race-step">
+      <p class="race-lead">2. Paste the reply code your opponent sends back, then connect.</p>
+      <textarea class="race-code" id="raceHostAnswerInput" rows="4" placeholder="Paste your opponent's reply code here"></textarea>
+      <button class="hub-start" id="btnRaceHostConnect" type="button">Connect</button>
+    </div>
+    <p class="race-status" id="raceHostStatus"></p>
+  </div>
+
+  <div class="race-card" id="raceViewJoin" style="display:none">
+    <div class="race-step">
+      <p class="race-lead">1. Paste the code your opponent sent you, then generate your reply.</p>
+      <textarea class="race-code" id="raceJoinOfferInput" rows="4" placeholder="Paste the host's code here"></textarea>
+      <button class="hub-start" id="btnRaceJoinGenerate" type="button">Generate Reply Code</button>
+    </div>
+    <div class="race-step" id="raceJoinStep2" style="display:none">
+      <p class="race-lead">2. Copy this reply code and send it back to your opponent.</p>
+      <textarea class="race-code" id="raceJoinAnswerCode" readonly rows="4"></textarea>
+      <button class="hub-start" id="btnCopyJoinAnswer" type="button">Copy Code</button>
+    </div>
+    <p class="race-status" id="raceJoinStatus"></p>
+  </div>
+
+  <div class="race-card" id="raceViewWait" style="display:none">
+    <p class="race-status" id="raceWaitStatus">Connected! Waiting…</p>
+    <button class="hub-start" id="btnRaceStart" type="button" style="display:none">Start Race</button>
+  </div>
+
+  <div class="race-card" id="raceViewLive" style="display:none">
+    <div class="race-progress-row">
+      <div class="race-progress-side">
+        <span class="race-progress-label">You</span>
+        <div class="exam-progress"><div class="exam-progress-fill" id="raceMyFill"></div></div>
+      </div>
+      <div class="race-progress-side">
+        <span class="race-progress-label">Opponent</span>
+        <div class="exam-progress"><div class="exam-progress-fill race-opp-fill" id="raceOppFill"></div></div>
+      </div>
+    </div>
+    <div class="exam-category" id="raceCategory">CATEGORY</div>
+    <p class="exam-question" id="raceQuestion"></p>
+    <div class="exam-options" id="raceOptions"></div>
+  </div>
+
+  <div class="race-card" id="raceViewFinishWait" style="display:none">
+    <p class="race-status" id="raceFinishWaitStatus">You finished! Waiting for your opponent…</p>
+  </div>
+
+  <div id="raceViewResults" style="display:none">
+    <div class="race-winner-banner" id="raceWinnerBanner">Winner</div>
+    <div class="race-results-grid">
+      <div class="race-result-card" id="raceMyCard">
+        <span class="race-result-name">You</span>
+        <span class="race-result-score" id="raceMyScore">0%</span>
+        <span class="race-result-detail" id="raceMyDetail">0 of 10 correct</span>
+      </div>
+      <div class="race-result-card" id="raceOppCard">
+        <span class="race-result-name">Opponent</span>
+        <span class="race-result-score" id="raceOppScore">0%</span>
+        <span class="race-result-detail" id="raceOppDetail">0 of 10 correct</span>
+      </div>
+    </div>
+    <div class="results-actions">
+      <button class="hub-start" id="btnRaceRematch" type="button">Race Again</button>
+      <button class="hub-start hub-start-secondary" id="btnRaceHome" type="button">Back to Hub</button>
     </div>
   </div>
 </div>
@@ -1970,11 +2132,13 @@
     examScreenEl.style.display = name==='exam' ? 'flex' : 'none';
     penaltyScreenEl.style.display = name==='penalty' ? 'flex' : 'none';
     pacScreenEl.style.display = name==='pacman' ? 'flex' : 'none';
+    raceScreenEl.style.display = name==='race' ? 'flex' : 'none';
     document.body.classList.toggle('mode-arcade', name==='arcade' || name==='penalty' || name==='pacman');
   }
 
   function goToHub(){
     stopExamTimer();
+    raceCleanupConnection();
     showScreen('hub');
   }
 
@@ -3547,6 +3711,316 @@
     resizePacCanvas();
   }
 
+  // ---------- online multiplayer race ----------
+  const RACE_ICE_SERVERS = [{ urls:'stun:stun.l.google.com:19302' }];
+
+  const raceScreenEl = document.getElementById('raceScreen');
+  const raceViews = {
+    lobby: document.getElementById('raceViewLobby'),
+    host: document.getElementById('raceViewHost'),
+    join: document.getElementById('raceViewJoin'),
+    wait: document.getElementById('raceViewWait'),
+    live: document.getElementById('raceViewLive'),
+    finishWait: document.getElementById('raceViewFinishWait'),
+    results: document.getElementById('raceViewResults'),
+  };
+  function showRaceView(name){
+    Object.keys(raceViews).forEach(k=>{
+      raceViews[k].style.display = (k!==name) ? 'none' : (k==='results' ? 'block' : 'flex');
+    });
+  }
+
+  let racePC = null, raceChannel = null, raceRole = null;
+  let raceSubjectKey = null, raceOrder = [], raceIndex = 0, raceScore = 0, raceCorrectCount = 0, raceStartTime = 0;
+  let raceMyFinished = false, raceOppFinished = false, raceMyResult = null, raceOppResult = null, raceOppProgress = 0;
+
+  function raceCleanupConnection(){
+    if(raceChannel){ try{ raceChannel.close(); }catch(e){} raceChannel = null; }
+    if(racePC){ try{ racePC.close(); }catch(e){} racePC = null; }
+    raceRole = null;
+  }
+
+  function raceSupported(){ return typeof RTCPeerConnection !== 'undefined'; }
+
+  function waitIceGatherComplete(pc){
+    return new Promise(resolve=>{
+      if(pc.iceGatheringState==='complete'){ resolve(); return; }
+      const onChange = ()=>{
+        if(pc.iceGatheringState==='complete'){ pc.removeEventListener('icegatheringstatechange', onChange); resolve(); }
+      };
+      pc.addEventListener('icegatheringstatechange', onChange);
+      setTimeout(resolve, 4000);
+    });
+  }
+  function encodeRaceCode(desc){ return btoa(JSON.stringify({ type:desc.type, sdp:desc.sdp })); }
+  function decodeRaceCode(code){ return JSON.parse(atob(code.trim())); }
+
+  function raceCopyTextarea(id, btn){
+    const el = document.getElementById(id);
+    const finish = ()=>{
+      if(!btn) return;
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(()=>{ btn.textContent = orig; }, 1200);
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(el.value).then(finish).catch(()=>{
+        el.select();
+        try{ document.execCommand('copy'); finish(); }catch(e){}
+      });
+    } else {
+      el.select();
+      try{ document.execCommand('copy'); finish(); }catch(e){}
+    }
+  }
+
+  function raceSetStatus(id, text, isError){
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.classList.toggle('error', !!isError);
+  }
+
+  function setupRaceChannelHandlers(){
+    raceChannel.onopen = ()=>{
+      showRaceView('wait');
+      document.getElementById('btnRaceStart').style.display = raceRole==='host' ? 'block' : 'none';
+      raceSetStatus('raceWaitStatus', raceRole==='host'
+        ? 'Connected! Click Start when you\'re both ready.'
+        : 'Connected! Waiting for the host to start…');
+    };
+    raceChannel.onclose = ()=>{ raceOnDisconnect(); };
+    raceChannel.onmessage = e=>{
+      let msg;
+      try{ msg = JSON.parse(e.data); }catch(err){ return; }
+      if(msg.t==='start') raceOnStartMessage(msg);
+      else if(msg.t==='progress'){
+        raceOppProgress = msg.index;
+        if(raceViews.live.style.display!=='none') raceUpdateFills();
+      }
+      else if(msg.t==='finish') raceOnOppFinish(msg);
+    };
+  }
+
+  function raceOnDisconnect(){
+    if(raceViews.wait.style.display!=='none') raceSetStatus('raceWaitStatus', 'Opponent disconnected.', true);
+    if(raceViews.live.style.display!=='none' || raceViews.finishWait.style.display!=='none'){
+      raceSetStatus('raceFinishWaitStatus', 'Opponent disconnected mid-race.', true);
+      showRaceView('finishWait');
+    }
+  }
+
+  async function raceStartHost(){
+    if(!raceSupported()){
+      raceSetStatus('raceLobbyStatus', 'Online multiplayer needs a live browser connection (WebRTC), which this preview blocks. Open the GitHub Pages version of this app to race.', true);
+      document.getElementById('raceLobbyStatus').style.display = 'block';
+      return;
+    }
+    raceCleanupConnection();
+    raceRole = 'host';
+    racePC = new RTCPeerConnection({ iceServers: RACE_ICE_SERVERS });
+    raceChannel = racePC.createDataChannel('race');
+    setupRaceChannelHandlers();
+    showRaceView('host');
+    document.getElementById('raceHostOfferCode').value = '';
+    document.getElementById('raceHostAnswerInput').value = '';
+    raceSetStatus('raceHostStatus', 'Generating code…');
+    try{
+      const offer = await racePC.createOffer();
+      await racePC.setLocalDescription(offer);
+      await waitIceGatherComplete(racePC);
+      document.getElementById('raceHostOfferCode').value = encodeRaceCode(racePC.localDescription);
+      raceSetStatus('raceHostStatus', '');
+    }catch(err){
+      raceSetStatus('raceHostStatus', 'Could not create connection: ' + err.message, true);
+    }
+  }
+
+  async function raceHostConnect(){
+    const input = document.getElementById('raceHostAnswerInput').value;
+    if(!input.trim()){ raceSetStatus('raceHostStatus', "Paste your opponent's reply code first.", true); return; }
+    try{
+      const desc = decodeRaceCode(input);
+      await racePC.setRemoteDescription(desc);
+      raceSetStatus('raceHostStatus', 'Connecting…');
+    }catch(err){
+      raceSetStatus('raceHostStatus', 'That code looks invalid. Double check and try again.', true);
+    }
+  }
+
+  function raceStartJoin(){
+    if(!raceSupported()){
+      raceSetStatus('raceLobbyStatus', 'Online multiplayer needs a live browser connection (WebRTC), which this preview blocks. Open the GitHub Pages version of this app to race.', true);
+      document.getElementById('raceLobbyStatus').style.display = 'block';
+      return;
+    }
+    raceCleanupConnection();
+    raceRole = 'guest';
+    racePC = new RTCPeerConnection({ iceServers: RACE_ICE_SERVERS });
+    racePC.ondatachannel = e=>{ raceChannel = e.channel; setupRaceChannelHandlers(); };
+    showRaceView('join');
+    document.getElementById('raceJoinOfferInput').value = '';
+    document.getElementById('raceJoinAnswerCode').value = '';
+    document.getElementById('raceJoinStep2').style.display = 'none';
+    raceSetStatus('raceJoinStatus', '');
+  }
+
+  async function raceJoinGenerate(){
+    const input = document.getElementById('raceJoinOfferInput').value;
+    if(!input.trim()){ raceSetStatus('raceJoinStatus', "Paste the host's code first.", true); return; }
+    try{
+      const desc = decodeRaceCode(input);
+      await racePC.setRemoteDescription(desc);
+      const answer = await racePC.createAnswer();
+      await racePC.setLocalDescription(answer);
+      await waitIceGatherComplete(racePC);
+      document.getElementById('raceJoinAnswerCode').value = encodeRaceCode(racePC.localDescription);
+      document.getElementById('raceJoinStep2').style.display = 'flex';
+      raceSetStatus('raceJoinStatus', '');
+    }catch(err){
+      raceSetStatus('raceJoinStatus', 'That code looks invalid. Double check and try again.', true);
+    }
+  }
+
+  const raceCategoryEl = document.getElementById('raceCategory');
+  const raceQuestionEl = document.getElementById('raceQuestion');
+  const raceOptionsEl = document.getElementById('raceOptions');
+  const raceMyFillEl = document.getElementById('raceMyFill');
+  const raceOppFillEl = document.getElementById('raceOppFill');
+
+  function raceUpdateFills(){
+    raceMyFillEl.style.width = pctOf(raceIndex, raceOrder.length) + '%';
+    raceOppFillEl.style.width = pctOf(raceOppProgress, raceOrder.length) + '%';
+  }
+
+  function raceLoadQuestion(){
+    const q = SUBJECTS[raceSubjectKey].questions[raceOrder[raceIndex]];
+    raceCategoryEl.textContent = q.category;
+    raceQuestionEl.textContent = q.q;
+    const opts = shuffleAnswerOptions(q);
+    raceOptionsEl.innerHTML = '';
+    opts.forEach(o=>{
+      const btn = document.createElement('button');
+      btn.className = 'exam-option';
+      btn.type = 'button';
+      btn.textContent = o.text;
+      btn.addEventListener('click', ()=>raceAnswer(o, btn));
+      raceOptionsEl.appendChild(btn);
+    });
+    raceUpdateFills();
+  }
+
+  function raceAnswer(chosen, btnEl){
+    Array.from(raceOptionsEl.children).forEach(b=>{ b.disabled = true; });
+    if(chosen.correct){ raceScore += 100; raceCorrectCount += 1; btnEl.classList.add('is-correct'); }
+    else { btnEl.classList.add('is-wrong'); }
+    raceIndex += 1;
+    if(raceChannel && raceChannel.readyState==='open'){
+      raceChannel.send(JSON.stringify({ t:'progress', index: raceIndex }));
+    }
+    raceUpdateFills();
+    setTimeout(()=>{
+      if(raceIndex >= raceOrder.length) raceFinishMine();
+      else raceLoadQuestion();
+    }, 260);
+  }
+
+  function raceBeginLocal(){
+    raceIndex = 0; raceScore = 0; raceCorrectCount = 0;
+    raceMyFinished = false; raceOppFinished = false;
+    raceMyResult = null; raceOppResult = null;
+    raceOppProgress = 0;
+    raceStartTime = Date.now();
+    showRaceView('live');
+    raceLoadQuestion();
+  }
+
+  function btnRaceStartClick(){
+    if(raceRole!=='host' || !raceChannel || raceChannel.readyState!=='open') return;
+    raceSubjectKey = selSubject.value;
+    currentSubject = raceSubjectKey;
+    raceOrder = shuffleArray(Array.from({length:SUBJECTS[raceSubjectKey].questions.length}, (_,i)=>i)).slice(0, QUESTIONS_PER_RUN);
+    raceChannel.send(JSON.stringify({ t:'start', subjectKey: raceSubjectKey, order: raceOrder }));
+    raceBeginLocal();
+  }
+
+  function raceOnStartMessage(msg){
+    raceSubjectKey = msg.subjectKey;
+    raceOrder = msg.order;
+    raceBeginLocal();
+  }
+
+  function raceFinishMine(){
+    raceMyFinished = true;
+    const elapsedMs = Date.now() - raceStartTime;
+    raceMyResult = { correct: raceCorrectCount, total: raceOrder.length, elapsedMs };
+    if(raceChannel && raceChannel.readyState==='open'){
+      raceChannel.send(JSON.stringify({ t:'finish', correct: raceCorrectCount, total: raceOrder.length, elapsedMs }));
+    }
+    if(raceOppFinished) raceShowResults();
+    else {
+      raceSetStatus('raceFinishWaitStatus', 'You finished! Waiting for your opponent…');
+      showRaceView('finishWait');
+    }
+  }
+
+  function raceOnOppFinish(msg){
+    raceOppFinished = true;
+    raceOppResult = { correct: msg.correct, total: msg.total, elapsedMs: msg.elapsedMs };
+    raceOppProgress = msg.total;
+    if(raceViews.live.style.display!=='none') raceUpdateFills();
+    if(raceMyFinished) raceShowResults();
+  }
+
+  function raceShowResults(){
+    showRaceView('results');
+    const myPct = pctOf(raceMyResult.correct, raceMyResult.total);
+    const oppPct = pctOf(raceOppResult.correct, raceOppResult.total);
+    document.getElementById('raceMyScore').textContent = myPct + '%';
+    document.getElementById('raceMyDetail').textContent = raceMyResult.correct + ' of ' + raceMyResult.total + ' correct · ' + formatElapsed(raceMyResult.elapsedMs);
+    document.getElementById('raceOppScore').textContent = oppPct + '%';
+    document.getElementById('raceOppDetail').textContent = raceOppResult.correct + ' of ' + raceOppResult.total + ' correct · ' + formatElapsed(raceOppResult.elapsedMs);
+
+    const myCard = document.getElementById('raceMyCard');
+    const oppCard = document.getElementById('raceOppCard');
+    myCard.classList.remove('winner'); oppCard.classList.remove('winner');
+    const banner = document.getElementById('raceWinnerBanner');
+    let iWon = null;
+    if(myPct !== oppPct) iWon = myPct > oppPct;
+    else if(raceMyResult.elapsedMs !== raceOppResult.elapsedMs) iWon = raceMyResult.elapsedMs < raceOppResult.elapsedMs;
+
+    if(iWon===null){ banner.textContent = "It's a tie!"; }
+    else if(iWon){ banner.textContent = 'You win!'; myCard.classList.add('winner'); }
+    else { banner.textContent = 'Opponent wins!'; oppCard.classList.add('winner'); }
+  }
+
+  function raceRematch(){
+    if(raceRole==='host') btnRaceStartClick();
+    else {
+      showRaceView('wait');
+      document.getElementById('btnRaceStart').style.display = 'none';
+      raceSetStatus('raceWaitStatus', 'Waiting for the host to start a rematch…');
+    }
+  }
+
+  function startRace(subjectKey){
+    currentSubject = subjectKey;
+    raceCleanupConnection();
+    document.getElementById('raceLobbyStatus').style.display = 'none';
+    showRaceView('lobby');
+    showScreen('race');
+  }
+
+  document.getElementById('btnRaceHost').addEventListener('click', raceStartHost);
+  document.getElementById('btnRaceJoin').addEventListener('click', raceStartJoin);
+  document.getElementById('btnCopyHostOffer').addEventListener('click', function(){ raceCopyTextarea('raceHostOfferCode', this); });
+  document.getElementById('btnRaceHostConnect').addEventListener('click', raceHostConnect);
+  document.getElementById('btnRaceJoinGenerate').addEventListener('click', raceJoinGenerate);
+  document.getElementById('btnCopyJoinAnswer').addEventListener('click', function(){ raceCopyTextarea('raceJoinAnswerCode', this); });
+  document.getElementById('btnRaceStart').addEventListener('click', btnRaceStartClick);
+  document.getElementById('btnRaceRematch').addEventListener('click', raceRematch);
+  document.getElementById('btnRaceHome').addEventListener('click', goToHub);
+  document.getElementById('btnRaceHub').addEventListener('click', goToHub);
+
   // ---------- hub ----------
   const selSubject = document.getElementById('selSubject');
   const selMode = document.getElementById('selMode');
@@ -3556,6 +4030,7 @@
     exam: 'All 20 questions, one at a time, with the correct answer and an explanation shown after each. Finishes with a pass/fail score and a topic-by-topic breakdown.',
     penalty: 'Football penalty shootout style: a best-of-5 shootout sampled at random. Pick the goal zone showing the correct answer to score — pick wrong and the keeper saves it. Nothing is lost either way.',
     pacman: 'Pac-Man style: navigate a maze through 10 questions sampled at random. Eat the answer node with the correct text — wrong guesses are shown, but nothing is lost. Dodge the ghosts along the way.',
+    race: 'Head-to-head against a friend on the same 10 questions in real time — one of you hosts, the other joins, by swapping two short codes. No account needed. Works only on the GitHub Pages version of this app, not this preview.',
   };
   function updateHubDesc(){
     hubDescEl.textContent = HUB_DESCRIPTIONS[selMode.value];
@@ -3569,6 +4044,7 @@
     if(selMode.value==='arcade') startArcade(subject);
     else if(selMode.value==='penalty') startPenalty(subject);
     else if(selMode.value==='pacman') startPacman(subject);
+    else if(selMode.value==='race') startRace(subject);
     else startExam(subject);
   });
 
