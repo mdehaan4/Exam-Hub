@@ -3735,6 +3735,7 @@
   let raceMyFinished = false, raceOppFinished = false, raceMyResult = null, raceOppResult = null, raceOppProgress = 0;
 
   function raceCleanupConnection(){
+    if(raceConnectTimeoutHandle){ clearTimeout(raceConnectTimeoutHandle); raceConnectTimeoutHandle = null; }
     if(raceChannel){ try{ raceChannel.close(); }catch(e){} raceChannel = null; }
     if(racePC){ try{ racePC.close(); }catch(e){} racePC = null; }
     raceRole = null;
@@ -3745,15 +3746,59 @@
   function waitIceGatherComplete(pc){
     return new Promise(resolve=>{
       if(pc.iceGatheringState==='complete'){ resolve(); return; }
-      const onChange = ()=>{
-        if(pc.iceGatheringState==='complete'){ pc.removeEventListener('icegatheringstatechange', onChange); resolve(); }
+      let done = false;
+      const finish = ()=>{
+        if(done) return;
+        done = true;
+        pc.removeEventListener('icegatheringstatechange', onChange);
+        pc.removeEventListener('icecandidate', onCandidate);
+        resolve();
       };
+      const onChange = ()=>{ if(pc.iceGatheringState==='complete') finish(); };
+      const onCandidate = e=>{ if(!e.candidate) finish(); };
       pc.addEventListener('icegatheringstatechange', onChange);
-      setTimeout(resolve, 4000);
+      pc.addEventListener('icecandidate', onCandidate);
+      setTimeout(finish, 6000);
     });
   }
-  function encodeRaceCode(desc){ return btoa(JSON.stringify({ type:desc.type, sdp:desc.sdp })); }
-  function decodeRaceCode(code){ return JSON.parse(atob(code.trim())); }
+
+  function bufferToBase64(bytes){
+    let binary = '';
+    const chunk = 0x8000;
+    for(let i=0;i<bytes.length;i+=chunk){ binary += String.fromCharCode.apply(null, bytes.subarray(i, i+chunk)); }
+    return btoa(binary);
+  }
+  function base64ToBuffer(b64){
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+  async function compressToCode(desc){
+    const json = JSON.stringify({ type:desc.type, sdp:desc.sdp });
+    if(typeof CompressionStream !== 'undefined'){
+      try{
+        const stream = new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'));
+        const buf = await new Response(stream).arrayBuffer();
+        return 'Z' + bufferToBase64(new Uint8Array(buf));
+      }catch(e){ /* fall through to uncompressed */ }
+    }
+    return 'J' + btoa(json);
+  }
+  async function decodeFromCode(code){
+    code = code.trim();
+    const marker = code[0], body = code.slice(1);
+    if(marker==='Z'){
+      if(typeof DecompressionStream === 'undefined'){
+        throw new Error("This browser can't read compressed codes — ask your opponent to try Chrome, Edge, or a recent Safari/Firefox.");
+      }
+      const stream = new Blob([base64ToBuffer(body)]).stream().pipeThrough(new DecompressionStream('gzip'));
+      const buf = await new Response(stream).arrayBuffer();
+      return JSON.parse(new TextDecoder().decode(buf));
+    }
+    if(marker==='J') return JSON.parse(atob(body));
+    return JSON.parse(atob(code)); // backward compatibility with older unmarked codes
+  }
 
   function raceCopyTextarea(id, btn){
     const el = document.getElementById(id);
@@ -3780,8 +3825,26 @@
     el.classList.toggle('error', !!isError);
   }
 
+  let raceConnectTimeoutHandle = null;
+  function raceWatchConnection(statusId){
+    if(raceConnectTimeoutHandle){ clearTimeout(raceConnectTimeoutHandle); raceConnectTimeoutHandle = null; }
+    if(!racePC) return;
+    racePC.oniceconnectionstatechange = ()=>{
+      if(!racePC) return;
+      const st = racePC.iceConnectionState;
+      if(st==='checking') raceSetStatus(statusId, 'Connecting…');
+      else if(st==='failed') raceSetStatus(statusId, "Connection failed — this can happen on restrictive networks. Double-check both codes were copied in full and try again.", true);
+      else if(st==='disconnected') raceSetStatus(statusId, 'Connection lost.', true);
+    };
+    raceConnectTimeoutHandle = setTimeout(()=>{
+      if(raceChannel && raceChannel.readyState==='open') return;
+      raceSetStatus(statusId, "Still trying to connect. If this doesn't finish within a few more seconds, double-check the codes and try again — some networks block peer-to-peer connections entirely.", true);
+    }, 12000);
+  }
+
   function setupRaceChannelHandlers(){
     raceChannel.onopen = ()=>{
+      if(raceConnectTimeoutHandle){ clearTimeout(raceConnectTimeoutHandle); raceConnectTimeoutHandle = null; }
       showRaceView('wait');
       document.getElementById('btnRaceStart').style.display = raceRole==='host' ? 'block' : 'none';
       raceSetStatus('raceWaitStatus', raceRole==='host'
@@ -3828,8 +3891,11 @@
       const offer = await racePC.createOffer();
       await racePC.setLocalDescription(offer);
       await waitIceGatherComplete(racePC);
-      document.getElementById('raceHostOfferCode').value = encodeRaceCode(racePC.localDescription);
-      raceSetStatus('raceHostStatus', '');
+      const code = await compressToCode(racePC.localDescription);
+      const codeEl = document.getElementById('raceHostOfferCode');
+      codeEl.value = code;
+      raceCopyTextarea('raceHostOfferCode', null);
+      raceSetStatus('raceHostStatus', 'Code copied to your clipboard — send it to your opponent.');
     }catch(err){
       raceSetStatus('raceHostStatus', 'Could not create connection: ' + err.message, true);
     }
@@ -3839,11 +3905,12 @@
     const input = document.getElementById('raceHostAnswerInput').value;
     if(!input.trim()){ raceSetStatus('raceHostStatus', "Paste your opponent's reply code first.", true); return; }
     try{
-      const desc = decodeRaceCode(input);
+      const desc = await decodeFromCode(input);
       await racePC.setRemoteDescription(desc);
       raceSetStatus('raceHostStatus', 'Connecting…');
+      raceWatchConnection('raceHostStatus');
     }catch(err){
-      raceSetStatus('raceHostStatus', 'That code looks invalid. Double check and try again.', true);
+      raceSetStatus('raceHostStatus', 'That code looks invalid: ' + err.message, true);
     }
   }
 
@@ -3868,16 +3935,19 @@
     const input = document.getElementById('raceJoinOfferInput').value;
     if(!input.trim()){ raceSetStatus('raceJoinStatus', "Paste the host's code first.", true); return; }
     try{
-      const desc = decodeRaceCode(input);
+      const desc = await decodeFromCode(input);
       await racePC.setRemoteDescription(desc);
       const answer = await racePC.createAnswer();
       await racePC.setLocalDescription(answer);
       await waitIceGatherComplete(racePC);
-      document.getElementById('raceJoinAnswerCode').value = encodeRaceCode(racePC.localDescription);
+      const code = await compressToCode(racePC.localDescription);
+      document.getElementById('raceJoinAnswerCode').value = code;
       document.getElementById('raceJoinStep2').style.display = 'flex';
-      raceSetStatus('raceJoinStatus', '');
+      raceCopyTextarea('raceJoinAnswerCode', null);
+      raceSetStatus('raceJoinStatus', 'Reply code copied to your clipboard — send it back to your opponent, then wait here.');
+      raceWatchConnection('raceJoinStatus');
     }catch(err){
-      raceSetStatus('raceJoinStatus', 'That code looks invalid. Double check and try again.', true);
+      raceSetStatus('raceJoinStatus', 'That code looks invalid: ' + err.message, true);
     }
   }
 
@@ -4020,6 +4090,9 @@
   document.getElementById('btnRaceRematch').addEventListener('click', raceRematch);
   document.getElementById('btnRaceHome').addEventListener('click', goToHub);
   document.getElementById('btnRaceHub').addEventListener('click', goToHub);
+  ['raceHostOfferCode','raceJoinAnswerCode'].forEach(id=>{
+    document.getElementById(id).addEventListener('focus', function(){ this.select(); });
+  });
 
   // ---------- hub ----------
   const selSubject = document.getElementById('selSubject');
