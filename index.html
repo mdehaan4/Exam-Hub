@@ -638,8 +638,8 @@
   <div class="hub-eyebrow">Certification Revision Platform</div>
   <h1 class="hub-title">Exam Hub</h1>
   <div class="hub-subtitle">Structured practice for technical certification exams</div>
-  <div class="hub-stats">
-    <span class="hub-stat-pill">5 Subjects</span>
+    <div class="hub-stats">
+    <span class="hub-stat-pill">6 Subjects</span>
     <span class="hub-stat-pill">4 Modes</span>
     <span class="hub-stat-pill">100 Questions</span>
   </div>
@@ -655,6 +655,7 @@
         <option value="uktax">UK Tax Fundamentals</option>
         <option value="istqb">ISTQB Foundation</option>
         <option value="saasinfra">SaaS Infrastructure</option>
+        <option value="plsql">PL/SQL Fundamentals</option>
       </select>
     </label>
     <label class="hub-field">
@@ -1187,6 +1188,26 @@
         { category:"Storage", q:"What is eventual consistency appropriate for?", answers:["Caches and some replicated stores where strict immediate consistency is not required","Financial ledger updates requiring exact ordering","Primary key generation only","OS kernel updates"], correct:0, explanation:"Eventual consistency can be used where immediate consistency is unnecessary, improving availability." },
         { category:"Compliance", q:"Which activity supports data residency requirements for SaaS customers?", answers:["Deploying data stores in specific regions and applying access controls","Storing everything in one region regardless of laws","Ignoring customer requests","Publishing data publicly"], correct:0, explanation:"Regional deployments and controls help meet legal and contractual data residency obligations." },
         { category:"Automation", q:"Which IaC tool helps provision cloud infrastructure declaratively?", answers:["Terraform","Manual console clicks","Text editor only","Browser bookmarks"], correct:0, explanation:"Terraform allows declarative provisioning of cloud infrastructure, enabling reproducible environments." }
+      ]
+    }
+    , plsql: {
+      key: 'plsql',
+      name: 'PL/SQL Fundamentals',
+      shortName: 'PL/SQL FUNDAMENTALS',
+      invaderTitle: 'PL/SQL REVISION',
+      questions: [
+        { category:"PL/SQL Basics", q:"Which PL/SQL block section is mandatory?", answers:["BEGIN","EXCEPTION","DECLARE","END"], correct:0, explanation:"A PL/SQL block must include a BEGIN...END section; DECLARE and EXCEPTION sections are optional." },
+        { category:"Procedures & Functions", q:"What keyword creates a stored procedure in PL/SQL?", answers:["PROCEDURE","FUNCTION","CREATE PROC","PACKAGE"], correct:0, explanation:"You create a stored procedure with CREATE [OR REPLACE] PROCEDURE; FUNCTION creates a function." },
+        { category:"Cursors", q:"Which cursor type is FOR-LOOP cursor in PL/SQL?", answers:["Implicit cursor loop","Explicit cursor","Ref cursor","Static cursor"], correct:0, explanation:"A FOR cursor loop uses an implicit cursor, automatically opening, fetching and closing it." },
+        { category:"Exceptions", q:"Which exception is raised when an explicit RAISE_APPLICATION_ERROR is used?", answers:["User-defined error","NO_DATA_FOUND","TOO_MANY_ROWS","ZERO_DIVIDE"], correct:0, explanation:"RAISE_APPLICATION_ERROR allows raising a user-defined error with a custom message and error number." },
+        { category:"Transactions", q:"Which statement ends and makes permanent the current transaction in PL/SQL?", answers:["COMMIT","ROLLBACK","SAVEPOINT","SET TRANSACTION"], correct:0, explanation:"COMMIT makes the current transaction's changes permanent; ROLLBACK undoes them." },
+        { category:"Triggers", q:"Which trigger timing fires after a row is inserted?", answers:["AFTER INSERT ON ... FOR EACH ROW","BEFORE INSERT ON ...","INSTEAD OF INSERT","ON INSERT"], correct:0, explanation:"AFTER INSERT FOR EACH ROW fires after each row is inserted into the table." },
+        { category:"Packages", q:"Which two sections does a PL/SQL package have?", answers:["Specification and Body","Header and Trailer","Declare and Begin","Public and Private"], correct:0, explanation:"A package has a specification (interface) and a body (implementation)." },
+        { category:"Datatypes", q:"Which PL/SQL datatype is used for storing fixed-point numbers?", answers:["NUMBER","VARCHAR2","DATE","BINARY_FLOAT"], correct:0, explanation:"NUMBER stores fixed-point and variable precision numeric values; BINARY_FLOAT is floating-point." },
+        { category:"Control Flow", q:"Which statement exits a loop immediately in PL/SQL?", answers:["EXIT","CONTINUE","GOTO","RETURN"], correct:0, explanation:"EXIT exits a loop; CONTINUE skips to the next iteration." },
+        { category:"Dynamic SQL", q:"Which package is commonly used to execute dynamic SQL in PL/SQL?", answers:["EXECUTE IMMEDIATE","DBMS_SQL","UTL_FILE","DBMS_OUTPUT"], correct:1, explanation:"DBMS_SQL provides an API for dynamic SQL; EXECUTE IMMEDIATE is the simpler native command for most cases." },
+        { category:"Error Handling", q:"Which built-in exception is raised when a SELECT INTO returns no rows?", answers:["NO_DATA_FOUND","TOO_MANY_ROWS","VALUE_ERROR","INVALID_CURSOR"], correct:0, explanation:"NO_DATA_FOUND is raised when SELECT INTO returns no rows." },
+        { category:"Best Practices", q:"Where should sensitive cursor or resource cleanup be placed to guarantee execution?", answers:["In the EXCEPTION or a FINALLY-style cleanup in the END block","Only in normal code path after loop","Only at session end","In package spec"], correct:0, explanation:"Cleanup should be in exception handlers or ensured code paths so resources are freed even on errors." }
       ]
     }
   };
