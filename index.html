@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Exam Hub — Arcade & Exam Revision</title>
 <style>
   :root{
@@ -234,12 +235,70 @@
   #btnPause{ right:8px; }
   #btnHint{ left:8px; top:40px; }
   #btnHub{ right:8px; top:40px; }
+  #btnScores{ left:8px; top:72px; }
   #btnPenMute{ left:8px; }
   #btnPenHub{ right:8px; }
   #btnPenHint{ left:8px; top:40px; }
+  #btnPenScores{ right:8px; top:40px; }
   #btnPacMute{ left:8px; }
   #btnPacHub{ right:8px; }
   #btnPacHint{ left:8px; top:40px; }
+  #btnPacScores{ right:8px; }
+
+  .hs-overlay{
+    position:fixed; inset:0; z-index:200;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(4,6,14,.78);
+    backdrop-filter:blur(4px);
+    padding:20px;
+  }
+  .hs-box{
+    width:100%; max-width:340px;
+    background:#0b0d1a;
+    border:1px solid rgba(77,255,160,.4);
+    border-radius:14px;
+    padding:24px 22px;
+    box-shadow:0 30px 80px rgba(0,0,0,.6), 0 0 40px rgba(77,255,160,.12);
+    display:flex; flex-direction:column; gap:14px;
+    font-family:var(--font-mono);
+  }
+  .hs-box-wide{ max-width:400px; }
+  .hs-title{
+    font-size:16px; font-weight:800; letter-spacing:.08em;
+    color:var(--phosphor); text-align:center;
+    text-shadow:0 0 16px rgba(77,255,160,.5);
+  }
+  .hs-score{
+    font-size:20px; font-weight:800; letter-spacing:.06em;
+    color:var(--amber); text-align:center;
+    font-variant-numeric:tabular-nums;
+  }
+  .hs-label{ font-size:10.5px; letter-spacing:.14em; color:var(--ink-dim); text-transform:uppercase; }
+  .hs-input{
+    font-family:var(--font-mono);
+    font-size:18px; font-weight:700; letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--ink);
+    background:rgba(255,255,255,.06);
+    border:1.5px solid rgba(238,241,250,.3);
+    border-radius:8px;
+    padding:12px 14px;
+    text-align:center;
+  }
+  .hs-input:focus{ outline:none; border-color:var(--phosphor); }
+  .lb-list{ display:flex; flex-direction:column; gap:6px; max-height:320px; overflow-y:auto; }
+  .lb-row{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 10px;
+    background:rgba(255,255,255,.04);
+    border-radius:8px;
+    font-size:13px;
+  }
+  .lb-row.lb-row-me{ background:rgba(77,255,160,.12); border:1px solid rgba(77,255,160,.35); }
+  .lb-rank{ width:22px; color:var(--violet); font-weight:800; }
+  .lb-name{ flex:1; color:var(--ink); font-weight:700; letter-spacing:.05em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lb-score{ color:var(--amber); font-weight:800; font-variant-numeric:tabular-nums; }
+  .lb-empty{ color:var(--ink-dim); text-align:center; padding:20px 0; font-size:12.5px; }
 
   .hint{
     font-size:9.5px;
@@ -638,8 +697,8 @@
   <div class="hub-eyebrow">Certification Revision Platform</div>
   <h1 class="hub-title">Exam Hub</h1>
   <div class="hub-subtitle">Structured practice for technical certification exams</div>
-    <div class="hub-stats">
-    <span class="hub-stat-pill">6 Subjects</span>
+  <div class="hub-stats">
+    <span class="hub-stat-pill">5 Subjects</span>
     <span class="hub-stat-pill">4 Modes</span>
     <span class="hub-stat-pill">100 Questions</span>
   </div>
@@ -655,7 +714,6 @@
         <option value="uktax">UK Tax Fundamentals</option>
         <option value="istqb">ISTQB Foundation</option>
         <option value="saasinfra">SaaS Infrastructure</option>
-        <option value="plsql">PL/SQL Fundamentals</option>
       </select>
     </label>
     <label class="hub-field">
@@ -715,6 +773,7 @@
     <button class="corner-btn" id="btnPause">PAUSE</button>
     <button class="corner-btn" id="btnHint">HINT: OFF</button>
     <button class="corner-btn" id="btnHub">◄ HUB</button>
+    <button class="corner-btn" id="btnScores">🏆 TOP</button>
   </div>
 
   <div class="hint"><b>◄ ►</b> / <b>A D</b> MOVE&nbsp;&nbsp;·&nbsp;&nbsp;<b>SPACE</b> FIRE&nbsp;&nbsp;·&nbsp;&nbsp;<b>P</b> PAUSE&nbsp;&nbsp;·&nbsp;&nbsp;<b>M</b> MUTE&nbsp;&nbsp;·&nbsp;&nbsp;<b>H</b> HINT&nbsp;&nbsp;·&nbsp;&nbsp;<b>ENTER</b> START<br>SHOOT&nbsp;THE&nbsp;SHIP&nbsp;WITH&nbsp;THE&nbsp;CORRECT&nbsp;ANSWER&nbsp;·&nbsp;UNLABELED&nbsp;SHIPS&nbsp;ARE&nbsp;DECOYS</div>
@@ -806,6 +865,7 @@
     <button class="corner-btn" id="btnPenMute">SND: ON</button>
     <button class="corner-btn" id="btnPenHint">HINT: OFF</button>
     <button class="corner-btn" id="btnPenHub">◄ HUB</button>
+    <button class="corner-btn" id="btnPenScores">🏆 TOP</button>
   </div>
 
   <div class="hint">CLICK OR TAP A GOAL ZONE TO SHOOT&nbsp;&nbsp;·&nbsp;&nbsp;<b>1-4</b> PICK A ZONE&nbsp;&nbsp;·&nbsp;&nbsp;<b>ENTER</b> SHOOT&nbsp;/&nbsp;START<br>PICK THE ZONE SHOWING THE CORRECT ANSWER TO SCORE A GOAL</div>
@@ -852,6 +912,7 @@
     <div class="hit-flash" id="pacHitFlash"></div>
     <button class="corner-btn" id="btnPacMute">SND: ON</button>
     <button class="corner-btn" id="btnPacHint">HINT: OFF</button>
+    <button class="corner-btn" id="btnPacScores">🏆 TOP</button>
   </div>
 
   <div class="hint"><b>◄►▲▼</b> MOVE&nbsp;&nbsp;·&nbsp;&nbsp;<b>ENTER</b> START&nbsp;&nbsp;·&nbsp;&nbsp;<b>H</b> HINT&nbsp;&nbsp;·&nbsp;&nbsp;EAT THE CORRECT ANSWER&nbsp;&nbsp;·&nbsp;&nbsp;AVOID GHOSTS</div>
@@ -963,6 +1024,24 @@
       <button class="hub-start" id="btnRaceRematch" type="button">Race Again</button>
       <button class="hub-start hub-start-secondary" id="btnRaceHome" type="button">Back to Hub</button>
     </div>
+  </div>
+</div>
+
+<div class="hs-overlay" id="hsModal" style="display:none">
+  <div class="hs-box">
+    <div class="hs-title">🏆 NEW HIGH SCORE!</div>
+    <div class="hs-score" id="hsModalScore">SCORE 000000</div>
+    <label class="hs-label" for="hsNameInput">Enter your name</label>
+    <input class="hs-input" id="hsNameInput" type="text" maxlength="12" autocomplete="off" placeholder="PLAYER">
+    <button class="hub-start" id="hsSaveBtn" type="button">Save Score</button>
+  </div>
+</div>
+
+<div class="hs-overlay" id="lbModal" style="display:none">
+  <div class="hs-box hs-box-wide">
+    <div class="hs-title" id="lbModalTitle">HIGH SCORES</div>
+    <div class="lb-list" id="lbModalList"></div>
+    <button class="hub-start hub-start-secondary" id="lbCloseBtn" type="button">Close</button>
   </div>
 </div>
 
@@ -1188,26 +1267,6 @@
         { category:"Storage", q:"What is eventual consistency appropriate for?", answers:["Caches and some replicated stores where strict immediate consistency is not required","Financial ledger updates requiring exact ordering","Primary key generation only","OS kernel updates"], correct:0, explanation:"Eventual consistency can be used where immediate consistency is unnecessary, improving availability." },
         { category:"Compliance", q:"Which activity supports data residency requirements for SaaS customers?", answers:["Deploying data stores in specific regions and applying access controls","Storing everything in one region regardless of laws","Ignoring customer requests","Publishing data publicly"], correct:0, explanation:"Regional deployments and controls help meet legal and contractual data residency obligations." },
         { category:"Automation", q:"Which IaC tool helps provision cloud infrastructure declaratively?", answers:["Terraform","Manual console clicks","Text editor only","Browser bookmarks"], correct:0, explanation:"Terraform allows declarative provisioning of cloud infrastructure, enabling reproducible environments." }
-      ]
-    }
-    , plsql: {
-      key: 'plsql',
-      name: 'PL/SQL Fundamentals',
-      shortName: 'PL/SQL FUNDAMENTALS',
-      invaderTitle: 'PL/SQL REVISION',
-      questions: [
-        { category:"PL/SQL Basics", q:"Which PL/SQL block section is mandatory?", answers:["BEGIN","EXCEPTION","DECLARE","END"], correct:0, explanation:"A PL/SQL block must include a BEGIN...END section; DECLARE and EXCEPTION sections are optional." },
-        { category:"Procedures & Functions", q:"What keyword creates a stored procedure in PL/SQL?", answers:["PROCEDURE","FUNCTION","CREATE PROC","PACKAGE"], correct:0, explanation:"You create a stored procedure with CREATE [OR REPLACE] PROCEDURE; FUNCTION creates a function." },
-        { category:"Cursors", q:"Which cursor type is FOR-LOOP cursor in PL/SQL?", answers:["Implicit cursor loop","Explicit cursor","Ref cursor","Static cursor"], correct:0, explanation:"A FOR cursor loop uses an implicit cursor, automatically opening, fetching and closing it." },
-        { category:"Exceptions", q:"Which exception is raised when an explicit RAISE_APPLICATION_ERROR is used?", answers:["User-defined error","NO_DATA_FOUND","TOO_MANY_ROWS","ZERO_DIVIDE"], correct:0, explanation:"RAISE_APPLICATION_ERROR allows raising a user-defined error with a custom message and error number." },
-        { category:"Transactions", q:"Which statement ends and makes permanent the current transaction in PL/SQL?", answers:["COMMIT","ROLLBACK","SAVEPOINT","SET TRANSACTION"], correct:0, explanation:"COMMIT makes the current transaction's changes permanent; ROLLBACK undoes them." },
-        { category:"Triggers", q:"Which trigger timing fires after a row is inserted?", answers:["AFTER INSERT ON ... FOR EACH ROW","BEFORE INSERT ON ...","INSTEAD OF INSERT","ON INSERT"], correct:0, explanation:"AFTER INSERT FOR EACH ROW fires after each row is inserted into the table." },
-        { category:"Packages", q:"Which two sections does a PL/SQL package have?", answers:["Specification and Body","Header and Trailer","Declare and Begin","Public and Private"], correct:0, explanation:"A package has a specification (interface) and a body (implementation)." },
-        { category:"Datatypes", q:"Which PL/SQL datatype is used for storing fixed-point numbers?", answers:["NUMBER","VARCHAR2","DATE","BINARY_FLOAT"], correct:0, explanation:"NUMBER stores fixed-point and variable precision numeric values; BINARY_FLOAT is floating-point." },
-        { category:"Control Flow", q:"Which statement exits a loop immediately in PL/SQL?", answers:["EXIT","CONTINUE","GOTO","RETURN"], correct:0, explanation:"EXIT exits a loop; CONTINUE skips to the next iteration." },
-        { category:"Dynamic SQL", q:"Which package is commonly used to execute dynamic SQL in PL/SQL?", answers:["EXECUTE IMMEDIATE","DBMS_SQL","UTL_FILE","DBMS_OUTPUT"], correct:1, explanation:"DBMS_SQL provides an API for dynamic SQL; EXECUTE IMMEDIATE is the simpler native command for most cases." },
-        { category:"Error Handling", q:"Which built-in exception is raised when a SELECT INTO returns no rows?", answers:["NO_DATA_FOUND","TOO_MANY_ROWS","VALUE_ERROR","INVALID_CURSOR"], correct:0, explanation:"NO_DATA_FOUND is raised when SELECT INTO returns no rows." },
-        { category:"Best Practices", q:"Where should sensitive cursor or resource cleanup be placed to guarantee execution?", answers:["In the EXCEPTION or a FINALLY-style cleanup in the END block","Only in normal code path after loop","Only at session end","In package spec"], correct:0, explanation:"Cleanup should be in exception handlers or ensured code paths so resources are freed even on errors." }
       ]
     }
   };
@@ -1581,6 +1640,104 @@
     try{ localStorage.setItem('eh_highscore_'+(prefix||'')+currentSubject, String(value)); }catch(e){}
   }
 
+  // ---------- leaderboards ----------
+  const LEADERBOARD_SIZE = 10;
+  function leaderboardKey(prefix){ return 'eh_leaderboard_'+(prefix||'')+currentSubject; }
+  function loadLeaderboard(prefix){
+    try{ const list = JSON.parse(localStorage.getItem(leaderboardKey(prefix))||'[]'); return Array.isArray(list) ? list : []; }
+    catch(e){ return []; }
+  }
+  function saveLeaderboardList(prefix, list){
+    try{ localStorage.setItem(leaderboardKey(prefix), JSON.stringify(list)); }catch(e){}
+  }
+  function qualifiesForLeaderboard(prefix, scoreVal){
+    if(scoreVal<=0) return false;
+    const list = loadLeaderboard(prefix);
+    if(list.length < LEADERBOARD_SIZE) return true;
+    return scoreVal > list[list.length-1].score;
+  }
+  function addToLeaderboard(prefix, name, scoreVal){
+    const list = loadLeaderboard(prefix);
+    list.push({ name: (name||'PLAYER').trim().slice(0,12).toUpperCase() || 'PLAYER', score: scoreVal });
+    list.sort((a,b)=>b.score-a.score);
+    list.length = Math.min(list.length, LEADERBOARD_SIZE);
+    saveLeaderboardList(prefix, list);
+    return list;
+  }
+
+  let modalOpen = false;
+  let pendingHighScore = null;
+  const hsModalEl = document.getElementById('hsModal');
+  const hsModalScoreEl = document.getElementById('hsModalScore');
+  const hsNameInputEl = document.getElementById('hsNameInput');
+  const hsSaveBtnEl = document.getElementById('hsSaveBtn');
+  const lbModalEl = document.getElementById('lbModal');
+  const lbModalTitleEl = document.getElementById('lbModalTitle');
+  const lbModalListEl = document.getElementById('lbModalList');
+  const lbCloseBtnEl = document.getElementById('lbCloseBtn');
+
+  function openHighScoreEntry(prefix, scoreVal, gameLabel){
+    pendingHighScore = { prefix, score:scoreVal, gameLabel };
+    hsModalScoreEl.textContent = 'SCORE ' + String(scoreVal).padStart(6,'0');
+    hsNameInputEl.value = '';
+    modalOpen = true;
+    hsModalEl.style.display = 'flex';
+    setTimeout(()=>hsNameInputEl.focus(), 30);
+  }
+
+  function submitHighScoreEntry(){
+    if(!pendingHighScore) return;
+    const { prefix, score:scoreVal, gameLabel } = pendingHighScore;
+    const list = addToLeaderboard(prefix, hsNameInputEl.value, scoreVal);
+    hsModalEl.style.display = 'none';
+    pendingHighScore = null;
+    openLeaderboard(prefix, gameLabel, list);
+  }
+
+  hsSaveBtnEl.addEventListener('click', submitHighScoreEntry);
+  hsNameInputEl.addEventListener('keydown', e=>{ e.stopPropagation(); if(e.code==='Enter'){ e.preventDefault(); submitHighScoreEntry(); } });
+
+  function renderLeaderboardRows(list){
+    lbModalListEl.innerHTML = '';
+    if(!list.length){
+      const empty = document.createElement('div');
+      empty.className = 'lb-empty';
+      empty.textContent = 'No scores yet — be the first!';
+      lbModalListEl.appendChild(empty);
+      return;
+    }
+    list.forEach((entry,i)=>{
+      const row = document.createElement('div');
+      row.className = 'lb-row';
+      const rank = document.createElement('span');
+      rank.className = 'lb-rank';
+      rank.textContent = String(i+1);
+      const name = document.createElement('span');
+      name.className = 'lb-name';
+      name.textContent = entry.name;
+      const sc = document.createElement('span');
+      sc.className = 'lb-score';
+      sc.textContent = String(entry.score).padStart(6,'0');
+      row.append(rank, name, sc);
+      lbModalListEl.appendChild(row);
+    });
+  }
+
+  function openLeaderboard(prefix, gameLabel, list){
+    list = list || loadLeaderboard(prefix);
+    const subjName = SUBJECTS[currentSubject] ? SUBJECTS[currentSubject].shortName : '';
+    lbModalTitleEl.textContent = gameLabel + (subjName ? ' · ' + subjName : '') + ' HIGH SCORES';
+    renderLeaderboardRows(list);
+    modalOpen = true;
+    lbModalEl.style.display = 'flex';
+  }
+  function closeLeaderboard(){
+    lbModalEl.style.display = 'none';
+    modalOpen = false;
+  }
+  lbCloseBtnEl.addEventListener('click', closeLeaderboard);
+  lbModalEl.addEventListener('pointerdown', e=>{ if(e.target===lbModalEl) closeLeaderboard(); });
+
   // ---------- game state ----------
   let state = 'title'; // title, question, resolve, paused, complete
   let prevState = 'question';
@@ -1797,6 +1954,7 @@
     updateHud();
     sfx.complete();
     state = 'complete';
+    if(qualifiesForLeaderboard('', score)) openHighScoreEntry('', score, 'INVADERS');
   }
 
   function flashHit(){
@@ -1810,7 +1968,7 @@
 
   // ---------- input ----------
   window.addEventListener('keydown', e=>{
-    if(appMode!=='arcade') return;
+    if(appMode!=='arcade' || modalOpen) return;
     ensureAudio();
     if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space'].includes(e.code)) e.preventDefault();
     if(e.code==='ArrowLeft'||e.code==='KeyA') input.left = true;
@@ -1840,7 +1998,7 @@
   bindHold(document.getElementById('btnFire'), ()=>input.fire=true, ()=>input.fire=false);
 
   screenWrap.addEventListener('pointerdown', ()=>{
-    if(appMode!=='arcade') return;
+    if(appMode!=='arcade' || modalOpen) return;
     ensureAudio();
     if(state==='title'||state==='complete') resetGame();
   });
@@ -1863,6 +2021,7 @@
   btnMute.addEventListener('click', toggleMute);
   btnPause.addEventListener('click', ()=>{ ensureAudio(); togglePause(); });
   btnHint.addEventListener('click', toggleHint);
+  document.getElementById('btnScores').addEventListener('click', ()=>{ ensureAudio(); openLeaderboard('', 'INVADERS'); });
 
   // ---------- HUD ----------
   const scoreEl = document.getElementById('scoreVal');
@@ -2571,6 +2730,7 @@
     updatePenaltyHud();
     sfx.complete();
     penState = 'complete';
+    if(qualifiesForLeaderboard('penalty_', penScore)) openHighScoreEntry('penalty_', penScore, 'PENALTY SHOOTOUT');
   }
 
   function updatePenalty(dt){
@@ -2983,7 +3143,7 @@
   }
 
   penScreenWrapEl.addEventListener('pointerdown', e=>{
-    if(appMode!=='penalty') return;
+    if(appMode!=='penalty' || modalOpen) return;
     ensureAudio();
     if(penState==='title'||penState==='complete'){ resetPenalty(); return; }
     if(penState!=='aim') return;
@@ -2993,7 +3153,7 @@
   });
 
   window.addEventListener('keydown', e=>{
-    if(appMode!=='penalty') return;
+    if(appMode!=='penalty' || modalOpen) return;
     if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Enter','Digit1','Digit2','Digit3','Digit4'].includes(e.code)) e.preventDefault();
     ensureAudio();
     if(e.code==='Enter'){
@@ -3023,6 +3183,7 @@
   btnPenHint.textContent = 'HINT: ' + (debugReveal?'ON':'OFF');
   btnPenHint.addEventListener('click', toggleHint);
   btnPenHubBtn.addEventListener('click', goToHub);
+  document.getElementById('btnPenScores').addEventListener('click', ()=>{ ensureAudio(); openLeaderboard('penalty_', 'PENALTY SHOOTOUT'); });
 
   function startPenalty(subjectKey){
     currentSubject = subjectKey;
@@ -3231,6 +3392,7 @@
     updatePacHud();
     sfx.complete();
     pacState = 'complete';
+    if(qualifiesForLeaderboard('pacman_', pacScore)) openHighScoreEntry('pacman_', pacScore, 'PAC-MAN REVISION');
   }
 
   function flashPacHit(){
@@ -3747,13 +3909,13 @@
   }
 
   pacScreenWrapEl.addEventListener('pointerdown', ()=>{
-    if(appMode!=='pacman') return;
+    if(appMode!=='pacman' || modalOpen) return;
     ensureAudio();
     if(pacState==='title'||pacState==='complete') resetPacman();
   });
 
   window.addEventListener('keydown', e=>{
-    if(appMode!=='pacman') return;
+    if(appMode!=='pacman' || modalOpen) return;
     if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Enter'].includes(e.code)) e.preventDefault();
     ensureAudio();
     if(e.code==='Enter'){
@@ -3771,7 +3933,7 @@
   function bindPacDpad(el, dr, dc){
     el.addEventListener('pointerdown', e=>{
       e.preventDefault();
-      if(appMode!=='pacman') return;
+      if(appMode!=='pacman' || modalOpen) return;
       ensureAudio();
       if(pacState==='title'||pacState==='complete'){ resetPacman(); return; }
       pacNextDir = {dr,dc};
@@ -3792,6 +3954,7 @@
   btnPacHint.textContent = 'HINT: ' + (debugReveal?'ON':'OFF');
   btnPacHint.addEventListener('click', toggleHint);
   btnPacHubBtn.addEventListener('click', goToHub);
+  document.getElementById('btnPacScores').addEventListener('click', ()=>{ ensureAudio(); openLeaderboard('pacman_', 'PAC-MAN REVISION'); });
 
   function startPacman(subjectKey){
     currentSubject = subjectKey;
