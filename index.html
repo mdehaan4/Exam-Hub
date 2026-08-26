@@ -1,5 +1,4 @@
-<meta charset="utf-8">
-<title>Exam Hub — Arcade & Exam Revision</title>
+<meta charset="utf-8"><title>Exam Hub — Arcade & Exam Revision</title>
 <style>
   :root{
     --void:#05060d;
@@ -53,6 +52,7 @@
     user-select:none;
   }
   body.mode-arcade{
+    padding:12px 12px 14px;
     background:
       radial-gradient(60% 50% at 18% 12%, rgba(139,107,255,.16), transparent 60%),
       radial-gradient(50% 45% at 85% 88%, rgba(255,59,92,.13), transparent 60%),
@@ -61,13 +61,17 @@
     color:var(--ink);
     font-family:var(--font-mono);
   }
+  body.mode-exam{
+    background:#eceeef;
+    font-family:Arial, Helvetica, "Liberation Sans", sans-serif;
+  }
 
   .cabinet, .penalty, .pacman{
-    width:min(94vw, 560px);
+    width:min(94vw, 660px);
     display:flex;
     flex-direction:column;
     align-items:center;
-    gap:14px;
+    gap:10px;
     font-family:var(--font-mono);
     color:var(--ink);
   }
@@ -150,7 +154,7 @@
   .screen-wrap{
     position:relative;
     width:100%;
-    aspect-ratio: 600 / 760;
+    aspect-ratio: 600 / 520;
     border-radius:18px;
     overflow:hidden;
     background:#000;
@@ -162,7 +166,7 @@
       0 30px 70px -20px rgba(0,0,0,.8);
   }
   #game, #penCanvas, #pacCanvas{ position:absolute; inset:0; width:100%; height:100%; display:block; }
-  .screen-wrap-wide{ aspect-ratio: 600 / 440; }
+  .screen-wrap-wide{ aspect-ratio: 600 / 380; }
   .screen-wrap-maze{ aspect-ratio: 390 / 330; }
 
   /* ---------- pac-man compact layout: fit one screen, no scrolling ---------- */
@@ -477,80 +481,118 @@
     line-height:1.7;
   }
 
-  /* ---------- exam mode (professional/business theme) ---------- */
+  /* ---------- exam mode (OnVUE-style test driver) ---------- */
   .exam{
-    width:min(94vw, 600px);
-    font-family:var(--font-sans);
-    color:var(--biz-ink);
+    width:min(96vw, 900px);
+    font-family:Arial, Helvetica, "Liberation Sans", sans-serif;
+    --font-sans:Arial, Helvetica, "Liberation Sans", sans-serif;
+    --onvue-teal:#1c6e8c;
+    --onvue-teal-dim:#e5f0f3;
+    color:#111;
     background:var(--biz-surface);
-    border-radius:14px;
+    border-radius:4px;
     overflow:hidden;
-    box-shadow:0 24px 60px rgba(2,4,12,.55), 0 0 0 1px rgba(15,23,42,.04);
+    box-shadow:0 2px 10px rgba(0,0,0,.15);
     display:flex;
     flex-direction:column;
     user-select:text;
   }
   .exam-topbar{
     display:flex; align-items:center; justify-content:space-between; gap:10px;
-    padding:14px 20px;
-    background:var(--biz-surface-2);
-    border-bottom:1px solid var(--biz-border);
+    padding:12px 18px;
+    background:#ffffff;
+    border-bottom:1px solid #dcdfe2;
   }
   .corner-btn-inline{
     font-family:var(--font-sans);
-    font-size:12px; font-weight:600; letter-spacing:0;
-    color:var(--biz-sub);
-    background:transparent;
-    border:1px solid var(--biz-border);
-    border-radius:6px;
-    padding:7px 11px;
+    font-size:11.5px; font-weight:600; letter-spacing:0;
+    color:#4a5560;
+    background:#fff;
+    border:1px solid #c3ccd3;
+    border-radius:4px;
+    padding:6px 10px;
     cursor:pointer;
     flex-shrink:0;
   }
-  .corner-btn-inline:hover{ color:var(--biz-ink); border-color:var(--biz-border-strong); background:#fff; }
-  .exam-title{
+  .corner-btn-inline:hover{ color:#1a2028; border-color:#9aa7b0; background:#f5f7f8; }
+  .exam-title-wrap{
     flex:1;
-    text-align:center;
-    font-size:12.5px;
-    font-weight:700;
-    letter-spacing:.02em;
-    color:var(--biz-navy);
+    display:flex; align-items:baseline; gap:8px;
+    min-width:0;
+    padding-left:4px;
+  }
+  .exam-wordmark{ font-size:13px; font-weight:800; letter-spacing:.01em; color:var(--onvue-teal); flex-shrink:0; }
+  .exam-title{
+    font-size:12px;
+    font-weight:600;
+    letter-spacing:.01em;
+    color:#5a6570;
     overflow:hidden;
     text-overflow:ellipsis;
     white-space:nowrap;
   }
-  .exam-meta{ display:flex; flex-direction:column; align-items:flex-end; gap:2px; flex-shrink:0; }
-  .exam-count{ font-size:12px; font-weight:600; color:var(--biz-sub); font-variant-numeric:tabular-nums; flex-shrink:0; }
-  .exam-timer{ font-size:11px; font-weight:600; color:var(--biz-accent); font-variant-numeric:tabular-nums; flex-shrink:0; }
+  .exam-title::before{ content:'\2013\0020'; }
+  .exam-meta{ display:flex; flex-direction:column; align-items:flex-end; gap:3px; flex-shrink:0; }
+  .exam-meta-row{ display:flex; align-items:center; gap:5px; }
+  .exam-meta-icon{ color:#5a6570; flex-shrink:0; }
+  .exam-count{ font-size:12px; font-weight:600; color:#333c44; font-variant-numeric:tabular-nums; flex-shrink:0; }
+  .exam-timer{ font-size:11.5px; font-weight:600; color:#5a6570; font-variant-numeric:tabular-nums; flex-shrink:0; }
+  .exam-strap{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 18px;
+    background:#f7f8f9;
+    border-bottom:1px solid #e3e6e8;
+  }
+  .exam-program{
+    flex:1; font-size:9.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase;
+    color:#6b7680;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .exam-flag-btn{
+    display:flex; align-items:center; gap:5px;
+    flex-shrink:0;
+    font-family:var(--font-sans);
+    font-size:11px; font-weight:700;
+    color:var(--onvue-teal);
+    background:#fff;
+    border:1px solid var(--onvue-teal);
+    border-radius:4px;
+    padding:4px 9px;
+    cursor:pointer;
+  }
+  .exam-flag-btn:hover{ background:var(--onvue-teal-dim); }
+  .exam-flag-btn.is-flagged{ background:var(--onvue-teal); color:#fff; }
+  .exam-flag-btn.is-flagged .exam-flag-icon path:last-child{ fill-opacity:1; }
   .exam-progress{ width:100%; height:4px; background:var(--biz-border); overflow:hidden; }
-  .exam-progress-fill{ height:100%; background:linear-gradient(90deg, var(--biz-accent), var(--biz-accent-2)); width:0%; transition:width .3s ease; }
+  .exam-progress-fill{ height:100%; background:var(--onvue-teal); width:0%; transition:width .3s ease; }
   .exam-card{
-    padding:24px 20px;
+    padding:28px 32px;
+    min-height:56vh;
     display:flex;
     flex-direction:column;
-    gap:16px;
+    gap:22px;
   }
   .exam-category{
     align-self:flex-start;
-    font-size:10.5px; letter-spacing:.06em; font-weight:700; text-transform:uppercase;
-    color:var(--biz-accent);
-    background:var(--biz-accent-dim);
-    border-radius:20px;
-    padding:4px 10px;
+    font-size:11px; letter-spacing:.02em; font-weight:700; text-transform:uppercase;
+    color:#6b7680;
+    background:none;
+    border-radius:0;
+    padding:0;
   }
-  .exam-question{ margin:0; font-size:16.5px; line-height:1.55; font-weight:600; color:var(--biz-navy); text-wrap:balance; }
-  .exam-options{ display:flex; flex-direction:column; gap:8px; counter-reset:examopt; }
+  .exam-question{ margin:0; font-size:15.5px; line-height:1.6; font-weight:400; color:#111; text-wrap:balance; }
+  .exam-options{ display:flex; flex-direction:column; gap:10px; counter-reset:examopt; }
   .exam-option{
     position:relative;
     text-align:left;
-    padding:12px 14px 12px 48px;
-    font-family:var(--font-sans);
-    font-size:13.5px;
-    font-weight:500;
-    color:var(--biz-ink);
+    padding:12px 14px 12px 46px;
+    font-family:Arial, Helvetica, "Liberation Sans", sans-serif;
+    font-size:14.5px;
+    font-weight:400;
+    color:#111;
     background:var(--biz-surface);
-    border:1px solid var(--biz-border);
-    border-radius:8px;
+    border:1px solid #c9d0d6;
+    border-radius:4px;
     cursor:pointer;
     counter-increment:examopt;
     transition:border-color .15s ease, background .15s ease;
@@ -558,23 +600,48 @@
   .exam-option::before{
     content:counter(examopt, upper-alpha);
     position:absolute; left:12px; top:50%; transform:translateY(-50%);
-    width:22px; height:22px; border-radius:6px;
-    background:var(--biz-surface-2); border:1px solid var(--biz-border);
-    color:var(--biz-sub); font-size:11.5px; font-weight:700;
+    width:20px; height:20px; border-radius:4px;
+    background:var(--biz-surface); border:1.5px solid #b0b9c1;
+    color:#5a6570; font-size:11.5px; font-weight:700;
     display:flex; align-items:center; justify-content:center;
   }
-  .exam-option:hover:not(:disabled){ border-color:var(--biz-accent); background:var(--biz-accent-dim); }
-  .exam-option:focus-visible{ outline:2px solid var(--biz-accent); outline-offset:1px; }
+  .exam-option:hover:not(:disabled){ border-color:var(--onvue-teal); background:var(--onvue-teal-dim); }
+  .exam-option:hover:not(:disabled)::before{ border-color:var(--onvue-teal); color:var(--onvue-teal); }
+  .exam-option:focus-visible{ outline:2px solid var(--onvue-teal); outline-offset:1px; }
   .exam-option.is-correct{ border-color:var(--biz-pass); background:var(--biz-pass-bg); color:var(--biz-pass); }
   .exam-option.is-correct::before{ background:var(--biz-pass); border-color:var(--biz-pass); color:#fff; }
   .exam-option.is-wrong{ border-color:var(--biz-fail); background:var(--biz-fail-bg); color:var(--biz-fail); }
   .exam-option.is-wrong::before{ background:var(--biz-fail); border-color:var(--biz-fail); color:#fff; }
   .exam-option:disabled{ cursor:default; opacity:1; }
-  .exam-explanation{ padding:14px 16px; border-radius:8px; background:var(--biz-surface-2); border:1px solid var(--biz-border); border-left:3px solid var(--biz-accent); }
+  .exam-explanation{ padding:14px 16px; border-radius:4px; background:var(--biz-surface-2); border:1px solid var(--biz-border); border-left:3px solid var(--onvue-teal); }
   .exam-explanation-tag{ font-size:10.5px; font-weight:700; letter-spacing:.04em; margin-bottom:6px; text-transform:uppercase; }
   .exam-explanation-tag.correct{ color:var(--biz-pass); }
   .exam-explanation-tag.wrong{ color:var(--biz-fail); }
   .exam-explanation p{ margin:0; font-size:13px; line-height:1.6; color:var(--biz-ink); }
+  .exam-navbar{
+    display:flex; align-items:center; justify-content:flex-end; gap:8px;
+    padding:12px 18px;
+    background:#ffffff;
+    border-top:1px solid #dcdfe2;
+  }
+  .exam-nav-btn{
+    font-family:Arial, Helvetica, "Liberation Sans", sans-serif;
+    font-size:13px; font-weight:700;
+    color:var(--onvue-teal);
+    background:#fff;
+    border:1px solid var(--onvue-teal);
+    border-radius:4px;
+    padding:9px 18px;
+    cursor:pointer;
+  }
+  .exam-nav-btn:hover:not(:disabled){ background:var(--onvue-teal-dim); }
+  .exam-nav-btn:disabled{ opacity:.4; cursor:not-allowed; }
+  .exam-nav-btn.primary{
+    color:#fff;
+    background:var(--onvue-teal);
+    border-color:var(--onvue-teal);
+  }
+  .exam-nav-btn.primary:hover{ background:#16596f; }
 
   .exam-results{ display:flex; flex-direction:column; align-items:stretch; gap:0; }
   .results-summary{
@@ -586,7 +653,7 @@
     flex-shrink:0;
     font-size:13px; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
     padding:8px 16px;
-    border-radius:8px;
+    border-radius:2px;
   }
   .results-banner.pass{ color:var(--biz-pass); background:var(--biz-pass-bg); }
   .results-banner.fail{ color:var(--biz-fail); background:var(--biz-fail-bg); }
@@ -788,11 +855,27 @@
 <div class="exam" id="examScreen" style="display:none">
   <div class="exam-topbar">
     <button class="corner-btn-inline" id="btnExamHub" type="button">← Exit</button>
-    <div class="exam-title" id="examSubjectTitle">SUBJECT</div>
-    <div class="exam-meta">
-      <span class="exam-count" id="examCount">Question 1 of 20</span>
-      <span class="exam-timer" id="examTimer">00:00</span>
+    <div class="exam-title-wrap">
+      <span class="exam-wordmark" id="examWordmark">GitLab</span>
+      <span class="exam-title" id="examSubjectTitle">SUBJECT</span>
     </div>
+    <div class="exam-meta">
+      <span class="exam-meta-row">
+        <svg class="exam-meta-icon" viewBox="0 0 16 16" width="12" height="12" fill="none"><rect x="2.5" y="2" width="11" height="12" rx="1.4" stroke="currentColor" stroke-width="1.3"/><path d="M5 5.5H11M5 8H11M5 10.5H8.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+        <span class="exam-count" id="examCount">1 of 20</span>
+      </span>
+      <span class="exam-meta-row">
+        <svg class="exam-meta-icon" viewBox="0 0 16 16" width="12" height="12" fill="none"><circle cx="8" cy="8" r="6.25" stroke="currentColor" stroke-width="1.3"/><path d="M8 4.5V8L10.3 9.3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="exam-timer" id="examTimer">00:00</span>
+      </span>
+    </div>
+  </div>
+  <div class="exam-strap" id="examStrap">
+    <span class="exam-program" id="examProgram">GitLab Certification Program</span>
+    <button class="exam-flag-btn" id="btnExamFlag" type="button">
+      <svg class="exam-flag-icon" viewBox="0 0 16 16" width="12" height="12"><path d="M4 2v12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M4 2.8C5.8 1.6 7.2 3 9 2.8C10.8 2.6 11.5 3.5 12.5 3.2V8.4C11.5 8.7 10.8 7.8 9 8C7.2 8.2 5.8 6.8 4 8Z" fill="currentColor" fill-opacity="0" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>
+      <span id="examFlagLabel">Flag for Review</span>
+    </button>
   </div>
   <div class="exam-progress" id="examProgressWrap"><div class="exam-progress-fill" id="examProgressFill"></div></div>
 
@@ -804,7 +887,11 @@
       <div class="exam-explanation-tag" id="examTag">Correct</div>
       <p id="examExplanationText"></p>
     </div>
-    <button class="hub-start" id="btnExamNext" type="button" style="display:none">Next Question&nbsp;→</button>
+  </div>
+
+  <div class="exam-navbar" id="examNavbar">
+    <button class="exam-nav-btn" id="btnExamPrev" type="button" disabled>← Previous</button>
+    <button class="exam-nav-btn primary" id="btnExamNext" type="button" style="display:none">Next Question&nbsp;→</button>
   </div>
 
   <div class="exam-results" id="examResults" style="display:none">
@@ -1078,6 +1165,7 @@
       name: 'GitLab Fundamentals Associate',
       shortName: 'GITLAB FUNDAMENTALS',
       invaderTitle: 'GITLAB INVADERS',
+      theme: { accent:'#FC6D26', accent2:'#E24329', navy:'#2b1a45', accentDim:'rgba(252,109,38,0.13)', wordmark:'GitLab', program:'GitLab Certification Program', provider:'Remote Proctored Assessment' },
       questions: [
         { category:"Git Basics", q:"Which Git command creates a local copy of a remote repository?", answers:["git clone","git init","git fork","git pull"], correct:0, explanation:"git clone downloads a full copy of a remote repository, including its history, to your local machine." },
         { category:"Merge Requests & Workflow", q:"What do you open in GitLab to propose merging changes from one branch into another?", answers:["Merge Request","Issue","Epic","Snippet"], correct:0, explanation:"A Merge Request (MR) is GitLab's mechanism for reviewing and merging code changes from one branch into another." },
@@ -1106,6 +1194,7 @@
       name: 'PostgreSQL Fundamentals',
       shortName: 'POSTGRESQL FUNDAMENTALS',
       invaderTitle: 'POSTGRES INVADERS',
+      theme: { accent:'#336791', accent2:'#00A1E0', navy:'#13293d', accentDim:'rgba(51,103,145,0.13)', wordmark:'EDB Postgres', program:'EDB Certification Exam', provider:'Kryterion Webassessor' },
       questions: [
         { category:"SQL Basics", q:"Which SQL command retrieves rows from a table?", answers:["SELECT","FETCH","GET","RETRIEVE"], correct:0, explanation:"SELECT is the standard SQL command used to query and retrieve rows from one or more tables." },
         { category:"SQL Basics", q:"Which clause filters individual rows before they are grouped by GROUP BY?", answers:["WHERE","HAVING","FILTER","LIMIT"], correct:0, explanation:"WHERE filters individual rows before grouping; HAVING filters groups after aggregation." },
@@ -1134,6 +1223,7 @@
       name: 'AWS Certified Cloud Practitioner',
       shortName: 'AWS CLOUD PRACTITIONER',
       invaderTitle: 'CLOUD PRACTITIONER INVADERS',
+      theme: { accent:'#FF9900', accent2:'#EC7211', navy:'#232F3E', accentDim:'rgba(255,153,0,0.14)', wordmark:'aws', program:'AWS Certification', provider:'Delivered via Pearson VUE' },
       questions: [
         { category:"Cloud Concepts", q:"Which AWS pricing benefit means you only pay for the compute or storage you actually consume?", answers:["Pay-as-you-go","A fixed annual subscription","A perpetual software license","A one-time setup fee"], correct:0, explanation:"AWS's pay-as-you-go model charges you only for the resources you actually use, with no large upfront commitment required." },
         { category:"Cloud Concepts", q:"Which of the AWS Cloud's advantages describes replacing large upfront capital expenses with variable, usage-based costs?", answers:["Trade capital expense for variable expense","Economies of scale","Increase speed and agility","Go global in minutes"], correct:0, explanation:"Instead of investing heavily in data centers before knowing how much capacity you need, the cloud lets you pay variable costs based on actual usage." },
@@ -1162,6 +1252,7 @@
       name: 'AWS Certified AI Practitioner',
       shortName: 'AWS AI PRACTITIONER',
       invaderTitle: 'AI PRACTITIONER INVADERS',
+      theme: { accent:'#FF9900', accent2:'#EC7211', navy:'#232F3E', accentDim:'rgba(255,153,0,0.14)', wordmark:'aws', program:'AWS Certification', provider:'Delivered via Pearson VUE' },
       questions: [
         { category:"AI & ML Fundamentals", q:"What is the primary goal of supervised learning?", answers:["Learn a mapping from labeled inputs to outputs","Discover hidden patterns in unlabeled data","Learn via trial-and-error rewards","Compress data into fewer dimensions"], correct:0, explanation:"Supervised learning trains a model on labeled examples so it can learn to predict outputs for new, unseen inputs." },
         { category:"AI & ML Fundamentals", q:"Which type of machine learning uses unlabeled data to find patterns or groupings?", answers:["Unsupervised learning","Supervised learning","Reinforcement learning","Transfer learning"], correct:0, explanation:"Unsupervised learning finds structure, such as clusters, in data that has no labeled outcomes." },
@@ -1190,6 +1281,7 @@
       name: 'UK Tax Fundamentals',
       shortName: 'UK TAX FUNDAMENTALS',
       invaderTitle: 'TAX INVADERS',
+      theme: { accent:'#8a2a3b', accent2:'#b8860b', navy:'#1c1420', accentDim:'rgba(138,42,59,0.10)', wordmark:'UK TAX', program:'Tax Qualification Exam', provider:'Computer-Based Exam' },
       questions: [
         { category:"Income Tax", q:"What is the standard personal allowance before UK income tax is due, as of the 2024/25 tax year?", answers:["£12,570","£10,000","£15,000","£20,000"], correct:0, explanation:"The personal allowance is £12,570, the amount most people can earn before paying income tax, frozen at this level since 2021/22." },
         { category:"Income Tax", q:"What is the basic rate of UK income tax on earnings above the personal allowance, up to the higher-rate threshold?", answers:["20%","10%","30%","45%"], correct:0, explanation:"The basic rate of income tax in the UK is 20%, applying to earnings between the personal allowance and the higher-rate threshold." },
@@ -1218,6 +1310,7 @@
       name: 'ISTQB Foundation',
       shortName: 'ISTQB FOUNDATION',
       invaderTitle: 'ISTQB REVISION',
+      theme: { accent:'#0093B2', accent2:'#00558C', navy:'#052a38', accentDim:'rgba(0,147,178,0.13)', wordmark:'ISTQB®', program:'ISTQB Certified Tester Exam', provider:'Remote Proctored Assessment' },
       questions: [
         { category:"Fundamentals", q:"What is the primary purpose of software testing?", answers:["To evaluate software quality by finding defects","To write code","To deploy software faster","To design the UI"], correct:0, explanation:"The main purpose of testing is to find defects and evaluate the quality of the software against requirements." },
         { category:"Fundamentals", q:"Which of the following is a dynamic testing technique?", answers:["Unit testing","Requirements review","Inspections","Static analysis"], correct:0, explanation:"Unit testing executes code (dynamic) to validate behaviour, whereas reviews/inspections are static techniques." },
@@ -1246,6 +1339,7 @@
       name: 'SaaS Infrastructure',
       shortName: 'SAAS INFRASTRUCTURE',
       invaderTitle: 'SAAS INFRASTRUCTURE',
+      theme: { accent:'#0ea5a3', accent2:'#6366f1', navy:'#111827', accentDim:'rgba(14,165,163,0.13)', wordmark:'SaaS', program:'Infrastructure Certification', provider:'Vendor-Neutral Exam' },
       questions: [
         { category:"Cloud Basics", q:"Which model is most common for SaaS providers to deliver compute and storage?", answers:["Public cloud IaaS/PaaS","On-premise only","Bare-metal colocation exclusively","Fog computing only"], correct:0, explanation:"SaaS commonly runs atop public cloud IaaS/PaaS for elasticity and managed services." },
         { category:"Networking", q:"What component typically distributes incoming traffic across multiple app instances?", answers:["Load balancer","DNS server only","Client-side router","CDN edge cache"], correct:0, explanation:"Load balancers distribute traffic across instances to provide availability and scale." },
@@ -2389,6 +2483,7 @@
     pacScreenEl.style.display = name==='pacman' ? 'flex' : 'none';
     raceScreenEl.style.display = name==='race' ? 'flex' : 'none';
     document.body.classList.toggle('mode-arcade', name==='arcade' || name==='penalty' || name==='pacman');
+    document.body.classList.toggle('mode-exam', name==='exam');
   }
 
   function goToHub(){
@@ -2420,7 +2515,18 @@
   let examStartTime = 0;
   let examElapsedMs = 0;
   let examTimerHandle = null;
+  let examHistory = [];
+  let historyViewPos = null;
+  let currentQuestionSnapshot = null;
+  let currentLiveOpts = null;
+  let examFlagged = new Set();
 
+  const examWordmarkEl = document.getElementById('examWordmark');
+  const examProgramEl = document.getElementById('examProgram');
+  const examStrapEl = document.getElementById('examStrap');
+  const examNavbarEl = document.getElementById('examNavbar');
+  const btnExamFlag = document.getElementById('btnExamFlag');
+  const btnExamPrev = document.getElementById('btnExamPrev');
   const examSubjectTitleEl = document.getElementById('examSubjectTitle');
   const examCountEl = document.getElementById('examCount');
   const examTimerEl = document.getElementById('examTimer');
@@ -2462,30 +2568,90 @@
     }, 1000);
   }
 
+  function applyExamTheme(theme){
+    const s = examScreenEl.style;
+    s.setProperty('--biz-accent', theme.accent);
+    s.setProperty('--biz-accent-2', theme.accent2);
+    s.setProperty('--biz-accent-dim', theme.accentDim);
+    examWordmarkEl.textContent = theme.wordmark;
+    examProgramEl.textContent = theme.program + ' · ' + theme.provider;
+  }
+
   function startExam(subjectKey){
     currentSubject = subjectKey;
     const subj = SUBJECTS[subjectKey];
+    applyExamTheme(subj.theme);
     examSubjectTitleEl.textContent = subj.name.toUpperCase();
     examQuestions = shuffleArray(subj.questions.slice());
     examIndex = 0;
     examResultsLog = [];
+    examHistory = [];
+    historyViewPos = null;
+    currentQuestionSnapshot = null;
+    currentLiveOpts = null;
+    examFlagged = new Set();
     examCardEl.style.display = 'flex';
     examProgressWrapEl.style.display = 'block';
+    examStrapEl.style.display = 'flex';
+    examNavbarEl.style.display = 'flex';
     examResultsEl.style.display = 'none';
     showScreen('exam');
     loadExamQuestion();
     startExamTimer();
   }
 
+  function updateFlagButtonVisual(){
+    const flagged = historyViewPos === null && examFlagged.has(examIndex);
+    btnExamFlag.classList.toggle('is-flagged', flagged);
+  }
+
+  function updateNavButtons(){
+    if(historyViewPos !== null){
+      btnExamPrev.disabled = historyViewPos <= 0;
+      btnExamNext.style.display = 'block';
+      btnExamNext.textContent = 'Next  →';
+    } else {
+      btnExamPrev.disabled = examHistory.length === 0;
+      if(currentQuestionSnapshot){
+        btnExamNext.style.display = 'block';
+        const isLastQuestion = (examIndex+1 >= examQuestions.length);
+        btnExamNext.textContent = isLastQuestion ? 'View Results  →' : 'Next Question  →';
+      } else {
+        btnExamNext.style.display = 'none';
+      }
+    }
+  }
+
+  function renderLockedOptions(opts, chosenIdx){
+    examOptionsEl.innerHTML = '';
+    opts.forEach((o,i)=>{
+      const btn = document.createElement('button');
+      btn.className = 'exam-option';
+      btn.type = 'button';
+      btn.textContent = o.text;
+      btn.disabled = true;
+      if(o.correct) btn.classList.add('is-correct');
+      else if(i===chosenIdx) btn.classList.add('is-wrong');
+      examOptionsEl.appendChild(btn);
+    });
+    const wasCorrect = opts[chosenIdx].correct;
+    examTagEl.textContent = wasCorrect ? 'Correct' : 'Incorrect';
+    examTagEl.className = 'exam-explanation-tag ' + (wasCorrect?'correct':'wrong');
+    examExplanationEl.style.display = 'block';
+  }
+
   function loadExamQuestion(){
+    historyViewPos = null;
     examAnswered = false;
+    currentQuestionSnapshot = null;
     const q = examQuestions[examIndex];
-    examCountEl.textContent = 'Question ' + (examIndex+1) + ' of ' + examQuestions.length;
+    examCountEl.textContent = (examIndex+1) + ' of ' + examQuestions.length;
     examProgressFillEl.style.width = pctOf(examIndex, examQuestions.length) + '%';
     examCategoryEl.textContent = q.category;
     examQuestionEl.textContent = q.q;
 
     const opts = shuffleAnswerOptions(q);
+    currentLiveOpts = opts;
     examOptionsEl.innerHTML = '';
     opts.forEach(o=>{
       const btn = document.createElement('button');
@@ -2496,13 +2662,15 @@
       examOptionsEl.appendChild(btn);
     });
     examExplanationEl.style.display = 'none';
-    btnExamNext.style.display = 'none';
+    updateFlagButtonVisual();
+    updateNavButtons();
   }
 
   function selectExamAnswer(chosen, allOpts, btnEl, q){
     if(examAnswered) return;
     examAnswered = true;
     const correct = chosen.correct;
+    const chosenIdx = allOpts.indexOf(chosen);
     examResultsLog.push({ category:q.category, correct });
 
     const buttons = Array.from(examOptionsEl.children);
@@ -2516,10 +2684,11 @@
     examTagEl.className = 'exam-explanation-tag ' + (correct?'correct':'wrong');
     examExplanationTextEl.textContent = q.explanation;
     examExplanationEl.style.display = 'block';
-    btnExamNext.style.display = 'block';
+
+    currentQuestionSnapshot = { index:examIndex, category:q.category, q:q.q, explanation:q.explanation, opts:allOpts, chosenIdx };
+    updateNavButtons();
 
     const isLastQuestion = (examIndex+1 >= examQuestions.length);
-    btnExamNext.textContent = isLastQuestion ? 'View Results  →' : 'Next Question  →';
     if(isLastQuestion){
       examElapsedMs = Date.now() - examStartTime;
       examTimerEl.textContent = formatElapsed(examElapsedMs);
@@ -2527,16 +2696,81 @@
     }
   }
 
+  function renderHistoryEntry(pos){
+    historyViewPos = pos;
+    const h = examHistory[pos];
+    examCountEl.textContent = (h.index+1) + ' of ' + examQuestions.length;
+    examProgressFillEl.style.width = pctOf(h.index, examQuestions.length) + '%';
+    examCategoryEl.textContent = h.category;
+    examQuestionEl.textContent = h.q;
+    renderLockedOptions(h.opts, h.chosenIdx);
+    examExplanationTextEl.textContent = h.explanation;
+    updateFlagButtonVisual();
+    updateNavButtons();
+  }
+
+  function renderLiveFromState(){
+    historyViewPos = null;
+    const q = examQuestions[examIndex];
+    examCountEl.textContent = (examIndex+1) + ' of ' + examQuestions.length;
+    examProgressFillEl.style.width = pctOf(examIndex, examQuestions.length) + '%';
+    examCategoryEl.textContent = q.category;
+    examQuestionEl.textContent = q.q;
+    if(currentQuestionSnapshot){
+      renderLockedOptions(currentQuestionSnapshot.opts, currentQuestionSnapshot.chosenIdx);
+      examExplanationTextEl.textContent = q.explanation;
+    } else {
+      examOptionsEl.innerHTML = '';
+      currentLiveOpts.forEach(o=>{
+        const btn = document.createElement('button');
+        btn.className = 'exam-option';
+        btn.type = 'button';
+        btn.textContent = o.text;
+        btn.addEventListener('click', ()=>selectExamAnswer(o, currentLiveOpts, btn, q));
+        examOptionsEl.appendChild(btn);
+      });
+      examExplanationEl.style.display = 'none';
+    }
+    updateFlagButtonVisual();
+    updateNavButtons();
+  }
+
   function examNext(){
+    if(historyViewPos !== null){
+      if(historyViewPos < examHistory.length - 1) renderHistoryEntry(historyViewPos + 1);
+      else renderLiveFromState();
+      return;
+    }
+    examHistory.push(currentQuestionSnapshot);
+    currentQuestionSnapshot = null;
     examIndex += 1;
     if(examIndex >= examQuestions.length) showExamResults();
     else loadExamQuestion();
   }
 
+  function examPrev(){
+    if(historyViewPos !== null){
+      if(historyViewPos > 0) renderHistoryEntry(historyViewPos - 1);
+      return;
+    }
+    if(examHistory.length === 0) return;
+    renderHistoryEntry(examHistory.length - 1);
+  }
+
+  btnExamPrev.addEventListener('click', examPrev);
+  btnExamFlag.addEventListener('click', ()=>{
+    if(historyViewPos !== null) return;
+    if(examFlagged.has(examIndex)) examFlagged.delete(examIndex);
+    else examFlagged.add(examIndex);
+    updateFlagButtonVisual();
+  });
+
   function showExamResults(){
     stopExamTimer();
     examCardEl.style.display = 'none';
     examProgressWrapEl.style.display = 'none';
+    examStrapEl.style.display = 'none';
+    examNavbarEl.style.display = 'none';
     examResultsEl.style.display = 'flex';
 
     const total = examResultsLog.length;
