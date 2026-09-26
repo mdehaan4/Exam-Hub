@@ -1,7 +1,7 @@
 import { findKing, colorOf, typeOf, squareName } from './engine.js?v=1';
 import { createGame, legalMoves, playMove, undoMove, isGameOver } from './game.js?v=3';
-import { createRoom, joinRoom, submitMove, watchRoom, normalizeRoomCode } from './online.js?v=4';
-import { firebaseConfig } from './firebase-config.js?v=2';
+import { createRoom, joinRoom, submitMove, watchRoom, normalizeRoomCode } from './online.js?v=5';
+import { firebaseConfig } from './firebase-config.js?v=3';
 
 // U+FE0E asks for the text (not emoji) form, so pawns don't render as a coloured emoji on iOS.
 const GLYPHS = { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟' };
@@ -190,6 +190,14 @@ function getBackend() {
   return backendPromise;
 }
 
+// Firebase reports rejected reads/writes as a bare 'permission_denied'.
+function errorText(err) {
+  const text = (err && err.message) || String(err);
+  return /permission_denied/i.test(text)
+    ? "The game server refused the request. If this keeps happening, online play may be switched off — try again later."
+    : text;
+}
+
 function showOnlineMessage(text, isError = false) {
   onlineMessageEl.textContent = text;
   onlineMessageEl.classList.toggle('error', isError);
@@ -214,7 +222,7 @@ async function goOnline(action) {
     enterRoom(backend, await action(backend));
     showOnlineMessage('');
   } catch (err) {
-    showOnlineMessage(err.message || String(err), true);
+    showOnlineMessage(errorText(err), true);
   } finally {
     connecting = false;
     render();
@@ -242,7 +250,7 @@ function enterRoom(backend, { code, color }) {
     }
     render();
   }, (err) => {
-    showOnlineMessage(err.message || String(err), true);
+    showOnlineMessage(errorText(err), true);
   });
 }
 
@@ -271,7 +279,7 @@ async function sendOnlineMove(input) {
   } catch (err) {
     if (online === room) {
       game = room.serverGame || before;
-      showOnlineMessage(err.message || String(err), true);
+      showOnlineMessage(errorText(err), true);
     }
   } finally {
     room.sending = false;

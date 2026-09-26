@@ -11,7 +11,8 @@
 //   }
 // Every client rebuilds the game by replaying the log with the chess engine, so the position can't
 // be written directly by anyone. database.rules.json makes the log append-only: a write can only
-// add the next index, as a well-formed move, and past moves can't be changed or deleted.
+// add a new, well-formed move, and past moves can't be changed or deleted. (The rules language
+// can't count children, so "no gaps in the numbering" is checked by the clients, below.)
 //
 // There is no sign-in: a player's id is a random id kept in their browser (see
 // firebase-backend.js), used to hold a seat and to rejoin after a reload. Because the database
@@ -42,11 +43,21 @@ export function normalizeRoomCode(input) {
 
 const moveRecord = ({ from, to, promotion }) => (promotion ? { from, to, promotion } : { from, to });
 
-// Rebuilds the game from a room's move log. Throws if any move in it is illegal. The log may come
-// back as an array, as an object keyed '0', '1', ... or be missing entirely (the Realtime Database
-// drops empty lists); integer-like keys enumerate in ascending order, so Object.values keeps order.
+// The room's moves in order. The log may come back as an array, as an object keyed '0', '1', ...
+// or be missing entirely (the Realtime Database drops empty lists). A log with a gap — an array
+// hole, or keys that skip a number — was written outside the game, so it's rejected.
+function moveLog(moves) {
+  if (!moves) return [];
+  const entries = Array.isArray(moves) ? moves.map((m, i) => [String(i), m]) : Object.entries(moves);
+  entries.forEach(([key, move], i) => {
+    if (key !== String(i) || !move) throw new Error(`move ${i + 1} is missing`);
+  });
+  return entries.map(([, move]) => moveRecord(move));
+}
+
+// Rebuilds the game from a room's move log. Throws if the log has a gap or an illegal move.
 export function gameFromRoom(room) {
-  return replayMoves(Object.values(room.moves || {}).map(moveRecord));
+  return replayMoves(moveLog(room.moves));
 }
 
 export async function createRoom(backend) {

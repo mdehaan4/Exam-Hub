@@ -4,7 +4,7 @@
       "$code": {
         ".read": true,
         ".write": "!data.exists() && newData.child('players/w').exists() && !newData.child('players/b').exists() && !newData.child('moves').exists()",
-        ".validate": "$code.matches(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/) && newData.hasChildren(['players', 'createdAt'])",
+        ".validate": "$code.matches(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789][ABCDEFGHJKLMNPQRSTUVWXYZ23456789][ABCDEFGHJKLMNPQRSTUVWXYZ23456789][ABCDEFGHJKLMNPQRSTUVWXYZ23456789][ABCDEFGHJKLMNPQRSTUVWXYZ23456789][ABCDEFGHJKLMNPQRSTUVWXYZ23456789]$/) && newData.hasChildren(['players', 'createdAt'])",
         "players": {
           "w": {
             ".validate": "newData.isString() && newData.val().length >= 8 && newData.val().length <= 64"
@@ -19,7 +19,7 @@
         },
         "moves": {
           "$n": {
-            ".write": "!data.exists() && newData.exists() && $n === data.parent().numChildren() + '' && root.child('games/' + $code + '/players/b').exists()",
+            ".write": "!data.exists() && newData.exists() && $n.matches(/^[0-9]+$/) && $n.length <= 4 && ($n === '0' || !$n.beginsWith('0')) && root.child('games/' + $code + '/players/b').exists()",
             ".validate": "newData.hasChildren(['from', 'to'])",
             "from": {
               ".validate": "newData.isString() && newData.val().matches(/^[a-h][1-8]$/)"
