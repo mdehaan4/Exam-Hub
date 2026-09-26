@@ -3,7 +3,7 @@
 //
 // A room stores who is playing and an append-only log of moves — never a board, turn or status:
 //   games/{CODE}: {
-//     players:   { w: uid, b?: uid },            the creator plays White; the joiner takes Black
+//     players:   { w: id, b?: id },              the creator plays White; the joiner takes Black
 //     moves:     { 0: { from: 'e2', to: 'e4' },   even indexes are White's, odd are Black's
 //                  1: { from: 'e7', to: 'e5' },
 //                  ... promotion?: 'Q' | 'R' | 'B' | 'N' },
@@ -11,8 +11,13 @@
 //   }
 // Every client rebuilds the game by replaying the log with the chess engine, so the position can't
 // be written directly by anyone. database.rules.json makes the log append-only: a write can only
-// add the next index, only by the player that index belongs to, and only as a well-formed move.
-// Rules can't check chess legality, so that part is the replay: an illegal move in the log is
+// add the next index, as a well-formed move, and past moves can't be changed or deleted.
+//
+// There is no sign-in: a player's id is a random id kept in their browser (see
+// firebase-backend.js), used to hold a seat and to rejoin after a reload. Because the database
+// can't verify who is writing, "only the player whose turn it is may move" is enforced by the
+// clients, not the rules — someone with the room code could still append a move from the
+// browser console. Chess legality is enforced by the replay: an illegal move in the log is
 // rejected by every client (it shows as an error and the game can't continue).
 
 import { replayMoves, playMove } from './game.js?v=3';
@@ -45,7 +50,7 @@ export function gameFromRoom(room) {
 }
 
 export async function createRoom(backend) {
-  const room = { players: { w: backend.uid }, createdAt: Date.now() };
+  const room = { players: { w: backend.playerId }, createdAt: Date.now() };
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = makeRoomCode();
     // Only claim the code if nobody has it; a clash just tries another code.
@@ -55,24 +60,24 @@ export async function createRoom(backend) {
   throw new Error('Could not create a room. Please try again.');
 }
 
-// Joins as Black, or rejoins as whichever side this uid already holds (e.g. after a reload).
+// Joins as Black, or rejoins as whichever side this browser already holds (e.g. after a reload).
 export async function joinRoom(backend, code) {
   const room = await backend.get(roomPath(code));
   if (!room) throw new Error(`No game found with code ${code}.`);
-  if (room.players.w === backend.uid) return { code, color: 'w' };
-  if (room.players.b === backend.uid) return { code, color: 'b' };
+  if (room.players.w === backend.playerId) return { code, color: 'w' };
+  if (room.players.b === backend.playerId) return { code, color: 'b' };
   if (room.players.b) throw new Error('That game already has two players.');
 
   const { value } = await backend.transaction(`${roomPath(code)}/players/b`,
-    (current) => (current === null ? backend.uid : undefined));
-  if (value !== backend.uid) throw new Error('That game already has two players.');
+    (current) => (current === null ? backend.playerId : undefined));
+  if (value !== backend.playerId) throw new Error('That game already has two players.');
   return { code, color: 'b' };
 }
 
 // Plays `input` ({ from, to, promotion? }) as `color` by appending it to the room's move log.
 // Checked against the room's current log first: throws if the opponent hasn't joined, it isn't
-// this player's turn, the game is over, or the move is illegal. Only this player can write the
-// next index, so the log can't change underneath between the check and the write.
+// this player's turn, the game is over, or the move is illegal. The write is a transaction that
+// only fills the next index if it's still empty, so a move can't land on top of another one.
 export async function submitMove(backend, code, color, input) {
   const room = await backend.get(roomPath(code));
   if (!room) throw new Error('This game no longer exists.');

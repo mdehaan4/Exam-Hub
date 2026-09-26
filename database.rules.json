@@ -3,15 +3,15 @@
     "games": {
       "$code": {
         ".read": true,
-        ".write": "auth != null && !data.exists() && newData.child('players/w').val() === auth.uid && !newData.child('players/b').exists() && !newData.child('moves').exists()",
+        ".write": "!data.exists() && newData.child('players/w').exists() && !newData.child('players/b').exists() && !newData.child('moves').exists()",
         ".validate": "$code.matches(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/) && newData.hasChildren(['players', 'createdAt'])",
         "players": {
           "w": {
-            ".validate": "newData.isString()"
+            ".validate": "newData.isString() && newData.val().length >= 8 && newData.val().length <= 64"
           },
           "b": {
-            ".write": "auth != null && !data.exists() && newData.val() === auth.uid && data.parent().child('w').val() !== auth.uid",
-            ".validate": "newData.isString()"
+            ".write": "!data.exists() && newData.exists() && newData.val() !== data.parent().child('w').val()",
+            ".validate": "newData.isString() && newData.val().length >= 8 && newData.val().length <= 64"
           },
           "$other": {
             ".validate": false
@@ -19,7 +19,7 @@
         },
         "moves": {
           "$n": {
-            ".write": "auth != null && !data.exists() && newData.exists() && $n === data.parent().numChildren() + '' && root.child('games/' + $code + '/players/b').exists() && (($n.matches(/[02468]$/) && root.child('games/' + $code + '/players/w').val() === auth.uid) || ($n.matches(/[13579]$/) && root.child('games/' + $code + '/players/b').val() === auth.uid))",
+            ".write": "!data.exists() && newData.exists() && $n === data.parent().numChildren() + '' && root.child('games/' + $code + '/players/b').exists()",
             ".validate": "newData.hasChildren(['from', 'to'])",
             "from": {
               ".validate": "newData.isString() && newData.val().matches(/^[a-h][1-8]$/)"

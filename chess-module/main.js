@@ -1,6 +1,6 @@
 import { findKing, colorOf, typeOf, squareName } from './engine.js?v=1';
 import { createGame, legalMoves, playMove, undoMove, isGameOver } from './game.js?v=3';
-import { createRoom, joinRoom, submitMove, watchRoom, normalizeRoomCode } from './online.js?v=3';
+import { createRoom, joinRoom, submitMove, watchRoom, normalizeRoomCode } from './online.js?v=4';
 import { firebaseConfig } from './firebase-config.js?v=2';
 
 // U+FE0E asks for the text (not emoji) form, so pawns don't render as a coloured emoji on iOS.
@@ -42,7 +42,7 @@ let pendingPromotion = null;
 let drag = null;           // { from, startX, startY, size, wasSelected, active, ghost }
 const DRAG_THRESHOLD = 5;  // px
 // null for a local game; while in an online room:
-//   { code, color: my side, players: { w, b? } uids, sending: a move is being saved,
+//   { code, color: my side, players: { w, b? } player ids, sending: a move is being saved,
 //     serverGame: last game received from the room }
 let online = null;
 let connecting = false;    // creating/joining a room
@@ -184,7 +184,7 @@ function commitMove(move) {
 let backendPromise = null;
 function getBackend() {
   if (!backendPromise) {
-    backendPromise = import('./firebase-backend.js?v=2').then(m => m.connectFirebase(firebaseConfig));
+    backendPromise = import('./firebase-backend.js?v=3').then(m => m.connectFirebase(firebaseConfig));
     backendPromise.catch(() => { backendPromise = null; }); // allow a retry after a failed connect
   }
   return backendPromise;
