@@ -1,0 +1,24 @@
+{
+  "name": "exam-hub",
+  "version": "1.0.0",
+  "description": "A self-contained, single-file revision app for technical certification exams, styled in Capgemini's brand blues.",
+  "main": "question-bank.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mdehaan4/Exam-Hub.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/mdehaan4/Exam-Hub/issues"
+  },
+  "homepage": "https://github.com/mdehaan4/Exam-Hub#readme",
+  "dependencies": {
+    "phaser": "^3.90.0"
+  }
+}

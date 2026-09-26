@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Exam Hub — Chess</title>
+    <style>
+      :root {
+        --bg: #14181d;
+        --panel: rgba(255, 255, 255, 0.05);
+        --panel-border: rgba(255, 255, 255, 0.1);
+        --text: #e9edf1;
+        --muted: #9aa5b1;
+        --light-sq: #e8dcc4;
+        --dark-sq: #a7835b;
+        --selected: rgba(255, 214, 90, 0.65);
+        --last-move: rgba(255, 214, 90, 0.35);
+        --hint: rgba(20, 24, 29, 0.28);
+        --check: radial-gradient(circle, rgba(255, 40, 40, 0.95) 0%, rgba(230, 30, 30, 0.55) 45%, transparent 75%);
+        --accent: #ffd166;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); }
+      body { font-family: Arial, sans-serif; }
+      .layout {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 24px;
+        padding: 24px 16px;
+      }
+      .board-wrap { width: min(88vmin, 640px); }
+      .board-frame { position: relative; }
+      .board {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        grid-template-rows: repeat(8, 1fr);
+        width: 100%;
+        aspect-ratio: 1;
+        border-radius: 6px;
+        overflow: hidden;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+        user-select: none;
+        touch-action: none; /* lets a touch drag move the piece instead of scrolling the page */
+      }
+      .square {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+        font: inherit;
+      }
+      .square.light { background: var(--light-sq); }
+      .square.dark { background: var(--dark-sq); }
+      .square.last-move::before,
+      .square.selected::before { content: ""; position: absolute; inset: 0; }
+      .square.last-move::before { background: var(--last-move); }
+      .square.selected::before { background: var(--selected); }
+      .square.in-check { background-image: var(--check); }
+      .square.target::after {
+        content: "";
+        position: absolute;
+        width: 30%;
+        height: 30%;
+        border-radius: 50%;
+        background: var(--hint);
+      }
+      .square.target.capture::after {
+        width: 88%;
+        height: 88%;
+        background: transparent;
+        border: 5px solid var(--hint);
+      }
+      .square.movable { cursor: grab; }
+      body.dragging, body.dragging .square { cursor: grabbing; }
+      .square.drag-over { box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 0.8); }
+      .square:focus-visible { outline: 3px solid #4da3ff; outline-offset: -3px; z-index: 1; }
+      .piece {
+        position: relative;
+        z-index: 1;
+        font-size: min(8.4vmin, 60px);
+        line-height: 1;
+        pointer-events: none;
+      }
+      .piece.w { color: #fbfbf8; text-shadow: 0 0 1px #000, 0 0 1px #000, 0 0 2px #000, 0 2px 3px rgba(0,0,0,0.35); }
+      .piece.b { color: #1d1f22; text-shadow: 0 0 1px rgba(255,255,255,0.5), 0 2px 3px rgba(0,0,0,0.3); }
+      .piece.lifted { opacity: 0.3; }
+      .piece.ghost {
+        position: fixed;
+        z-index: 50;
+        transform: translate(-50%, -50%) scale(1.1);
+        filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.45));
+      }
+      .coord { position: absolute; font-size: 11px; font-weight: 700; pointer-events: none; z-index: 1; }
+      .coord.rank { top: 3px; left: 4px; }
+      .coord.file { bottom: 2px; right: 4px; }
+      .square.light .coord { color: var(--dark-sq); }
+      .square.dark .coord { color: var(--light-sq); }
+
+      .panel h2 { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+      .captured-row { display: flex; align-items: center; gap: 10px; min-height: 32px; }
+      .captured-row .label { width: 44px; flex: 0 0 auto; font-size: 13px; color: var(--muted); }
+      .captured { display: flex; flex-wrap: wrap; align-items: center; }
+      .captured .piece { font-size: 24px; margin-right: -4px; }
+      .captured .piece.b { text-shadow: 0 0 1px #fff, 0 0 1px #fff, 0 0 3px rgba(255, 255, 255, 0.6); }
+      .captured .adv { font-size: 13px; font-weight: 700; margin-left: 10px; color: var(--text); }
+
+      .panel {
+        width: min(88vmin, 320px);
+        min-width: 260px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 16px;
+        border-radius: 12px;
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+      }
+      .panel-header { display: flex; align-items: baseline; justify-content: space-between; }
+      .panel h1 { margin: 0; font-size: 20px; letter-spacing: 0.04em; }
+      .back-link { color: var(--muted); font-size: 13px; text-decoration: none; }
+      .back-link:hover { color: var(--text); }
+      .status { font-size: 16px; font-weight: 700; min-height: 22px; }
+      .status.ended { color: var(--accent); }
+      .buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+      .buttons button {
+        flex: 1;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--panel-border);
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--text);
+        font: 700 12px Arial, sans-serif;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        cursor: pointer;
+      }
+      .buttons button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.16); }
+      .buttons button:disabled { opacity: 0.4; cursor: default; }
+      .moves {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        max-height: 360px;
+        overflow-y: auto;
+        font-size: 14px;
+        display: grid;
+        grid-template-columns: 36px 1fr 1fr;
+        row-gap: 2px;
+      }
+      .moves li { display: contents; }
+      .moves span { padding: 3px 4px; }
+      .moves .num { color: var(--muted); }
+      .moves .latest { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
+      .online-lobby { display: flex; flex-direction: column; gap: 8px; }
+      .online-lobby[hidden], .online-room[hidden] { display: none; }
+      .online-join { display: flex; gap: 8px; }
+      .online-join input {
+        flex: 1;
+        min-width: 0;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--panel-border);
+        background: rgba(0, 0, 0, 0.25);
+        color: var(--text);
+        font: 700 14px Arial, sans-serif;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .online-join input::placeholder { letter-spacing: 0.04em; text-transform: none; font-weight: 400; color: var(--muted); }
+      .online-room { display: flex; flex-direction: column; gap: 8px; }
+      .room-code { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+      .room-code strong { font-size: 20px; letter-spacing: 0.14em; color: var(--accent); }
+      .invite { display: flex; flex-direction: column; gap: 6px; }
+      .invite[hidden] { display: none; }
+      .invite-row { display: flex; gap: 8px; }
+      .invite-link {
+        flex: 1;
+        min-width: 0;
+        padding: 7px 9px;
+        border-radius: 8px;
+        border: 1px solid var(--panel-border);
+        background: rgba(0, 0, 0, 0.25);
+        color: var(--text);
+        font: 12px Arial, sans-serif;
+      }
+      .invite-row .buttons button { white-space: nowrap; }
+      .invite-hint { font-size: 12px; color: var(--muted); }
+      .room-info { font-size: 13px; }
+      .online-message { margin: 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
+      .online-message:empty { display: none; }
+      .online-message.error { color: #ff8a80; }
+      .hint-text { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 0; }
+
+      .promotion {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.55);
+        border-radius: 6px;
+        z-index: 5;
+      }
+      .promotion[hidden] { display: none; }
+      .promotion-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding: 16px 20px;
+        border-radius: 12px;
+        background: #22282f;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+      }
+      .promotion-box p { margin: 0; font-weight: 700; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; }
+      .promotion-choices { display: flex; gap: 8px; }
+      .promotion-choices button {
+        width: 64px;
+        height: 64px;
+        border-radius: 8px;
+        border: 2px solid transparent;
+        background: var(--light-sq);
+        cursor: pointer;
+        padding: 0;
+      }
+      .promotion-choices button:hover, .promotion-choices button:focus-visible { border-color: var(--accent); outline: none; }
+      .promotion-choices .piece { font-size: 46px; }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <div class="board-wrap">
+        <div class="board-frame">
+          <div class="board" id="board" role="grid" aria-label="Chess board"></div>
+          <div class="promotion" id="promotion" hidden>
+            <div class="promotion-box">
+              <p>Promote pawn to</p>
+              <div class="promotion-choices" id="promotion-choices"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="panel">
+        <div class="panel-header">
+          <h1>Chess</h1>
+          <a class="back-link" href="./index.html">← Hub</a>
+        </div>
+        <div class="status" id="status" aria-live="polite"></div>
+        <div class="buttons">
+          <button id="new-game">New game</button>
+          <button id="undo">Undo</button>
+          <button id="flip">Flip board</button>
+        </div>
+        <section>
+          <h2>Play online</h2>
+          <div class="online-lobby" id="online-lobby">
+            <div class="buttons"><button id="online-create">Create online game</button></div>
+            <form class="online-join buttons" id="online-join-form">
+              <input id="online-code" placeholder="Room code" maxlength="8" autocomplete="off" aria-label="Room code" />
+              <button type="submit">Join</button>
+            </form>
+          </div>
+          <div class="online-room" id="online-room" hidden>
+            <div class="room-code">Room <strong id="room-code"></strong></div>
+            <div class="invite" id="invite">
+              <div class="invite-row">
+                <input class="invite-link" id="room-link" readonly aria-label="Invite link" />
+                <span class="buttons"><button id="room-copy">Copy invite link</button></span>
+              </div>
+              <span class="invite-hint">Send this link to your opponent — opening it joins the game.</span>
+            </div>
+            <div class="room-info" id="room-info"></div>
+            <div class="buttons"><button id="room-leave">Leave game</button></div>
+          </div>
+          <p class="online-message" id="online-message" aria-live="polite"></p>
+        </section>
+        <section>
+          <h2>Captured</h2>
+          <div class="captured-row"><span class="label">White</span><div class="captured" id="captured-w"></div></div>
+          <div class="captured-row"><span class="label">Black</span><div class="captured" id="captured-b"></div></div>
+        </section>
+        <section>
+          <h2>Moves</h2>
+          <ol class="moves" id="moves"></ol>
+        </section>
+        <p class="hint-text">Drag a piece to a highlighted square, or click the piece and then the square. Play two players on one screen, or create an online game and send your opponent the room code.</p>
+      </aside>
+    </div>
+    <!-- Firebase compat SDK: plain scripts that define a global `firebase`. They must stay above
+         the game's own script. Auth is only used for anonymous sign-in, which gives each player
+         an ID the database rules use to enforce turns. No Analytics. -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script type="module" src="./chess-module/main.js?v=7"></script>
+  </body>
+</html>

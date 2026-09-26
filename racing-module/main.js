@@ -5,19 +5,19 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { FontLoader } from 'three/addons/loaders/FontLoader.js';
 import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
-import { createScene } from './scene.js';
+import { createScene } from './scene.js?v=22';
 import { InputHandler } from './input.js';
-import { Car } from './car.js';
-import { updateCarPhysics } from './physics.js';
-import { START_Z, FINISH_Z, TRACK_LENGTH, sampleBiome, lerpBiomeColor } from './biomes.js';
+import { Car } from './car.js?v=22';
+import { updateCarPhysics, UNITS_TO_MPH, MAX_SPEED } from './physics.js?v=14';
+import { START_Z, FINISH_Z, TRACK_LENGTH, DRIVABLE_HALF_WIDTH, sampleBiome, lerpBiomeColor } from './biomes.js?v=13';
 import { pickNextQuestion } from './quiz.js';
+import { ANSWER_COLORS, answerColorForSlot, hexToCssColor } from './answerColors.js?v=4';
 
-const { scene, camera, renderer, sun, ambient, skyGlow, sunDisc, buildingsNear, buildingsFar, buildingSpecs, oceanMaterials } = createScene();
+const { scene, camera, renderer, sun, ambient, skyGlow, sunDisc, buildingsNear, buildingsFar, buildingSpecs, oceanMaterials, startLights } = createScene();
 const input = new InputHandler();
 const car = new Car();
 const hudSpeedEl = document.getElementById('hud-speed');
-const hudObjectiveEl = document.getElementById('hud-objective');
-const hudTextEl = document.getElementById('hud-text');
+const hudTimeEl = document.getElementById('hud-time');
 const raceOverlayEl = document.getElementById('race-overlay');
 const raceMessageEl = document.getElementById('race-message');
 const restartButtonEl = document.getElementById('restart-button');
@@ -31,7 +31,7 @@ scene.add(car);
 
 const traffic = [];
 for (let i = 0; i < 5; i++) {
-  const racer = new Car();
+  const racer = new Car({ paintColor: i % 3 === 0 ? 0x4cc9f0 : i % 3 === 1 ? 0xf72585 : 0xf4d35e });
   racer.scale.setScalar(0.82);
   racer.position.set(i % 2 === 0 ? -7 : 7, 0.22, START_Z + 90 + i * 180);
   racer.rotation.y = Math.PI;
@@ -40,19 +40,6 @@ for (let i = 0; i < 5; i++) {
     speed: 8 + i * 2.4,
     drift: 0,
   };
-  racer.children[0].material = new THREE.MeshPhysicalMaterial({
-    color: i % 3 === 0 ? 0x4cc9f0 : i % 3 === 1 ? 0xf72585 : 0xf4d35e,
-    metalness: 0.7,
-    roughness: 0.2,
-    clearcoat: 1,
-  });
-  racer.children[1].material = new THREE.MeshPhysicalMaterial({
-    color: 0x1d3557,
-    metalness: 0.3,
-    roughness: 0.25,
-    transparent: true,
-    opacity: 0.85,
-  });
   scene.add(racer);
   traffic.push(racer);
 }
@@ -63,27 +50,44 @@ for (let i = 0; i < 5; i++) {
 // zone spawns further down the track. Declared up here (not next to the functions that use it,
 // further down) because resetRace() — called at module load — needs it already initialized.
 // Answers are solid 3D extruded letters (THREE.TextGeometry) standing on the road — no box, no
-// flat texture panel. One uniform color/glow for every answer, same reasoning as before: nothing
-// about a mesh's look should hint at whether it's correct.
-const ANSWER_TEXT_COLOR = 0xe8f3ff;
-const ANSWER_TEXT_EMISSIVE = 0x6fb8ff;
-// Letters are now building-scale. Note the coupling: buildAnswerTextGroup() shrinks the font
-// until every line fits TEXT_MAX_LINE_WIDTH, so raising the font size alone does nothing — the
-// line budget has to grow with it, which is why the road widened too (see scene.js).
-const TEXT_FONT_SIZE = 13; // world units, 5x the old 2.6 — letter height now rivals a small building
-const TEXT_EXTRUDE_DEPTH = 3.5; // thicker to stay proportional at the new scale
-const TEXT_MAX_LINE_WIDTH = 55; // per-answer width budget (was 8.5); answers are staggered in Z so
-                                // neighbouring lanes no longer have to share a single Z-plane
+// flat texture panel. Color is assigned per SLOT (position in the answers array) from the shared
+// ANSWER_COLORS palette — see answerColors.js for why that's safe (quiz.js shuffles which answer
+// lands in which slot, so the color itself never correlates with correctness).
+// Sized against measured scene objects (1 unit ≈ 1 m): car 2.07 tall; buildings 6.0–27.1 tall,
+// median 13.7, the smallest clamped to 6.0 in scene.js; trees and streetlights ~5.4–6.0. An
+// answer is capped at TEXT_MAX_HEIGHT = the smallest building, so it reads as a house-sized
+// object on the road. buildAnswerTextGroup() shrinks the font until the layout fits BOTH the
+// height and width budgets. helvetiker_bold: cap height ≈ 1.04 × size, with descenders ≈ 1.32 ×
+// size, width ≈ 0.70 × size per character.
+const TEXT_FONT_SIZE = 3.2; // starting size: a short one-line answer stands ~3.3 tall (caps), ~1.6× the car
+const TEXT_MIN_FONT_SIZE = 1.3; // floor so the longest bank answer (84 chars) still fits in 3 lines
+const TEXT_MAX_HEIGHT = 6.0;
+const TEXT_LINE_SPACING = 1.3; // × font size
+const TEXT_GLYPH_HEIGHT = 1.32; // × font size, one line including descenders
+const TEXT_EXTRUDE_DEPTH = 1.0;
+const TEXT_MAX_LINE_WIDTH = 28; // also sets the lane spread in spawnQuestionZone()
 const TEXT_MAX_LINES = 3;
 
-const QUESTION_LOOKAHEAD = 140; // meters ahead of the car a new zone spawns
-const FIRST_QUESTION_LOOKAHEAD = 420; // longer run-up for the very first question of a race, so the
-                                      // player can reach speed and settle before anything is asked
+// Every race asks exactly QUESTIONS_PER_RACE questions. Each question's answers occupy a fixed
+// slot on the track, spaced evenly from FIRST_ANSWER_DISTANCE to the last slot that still fits
+// before the finish, so the count doesn't depend on how fast the player answers.
+const QUESTIONS_PER_RACE = 5;
+const FIRST_ANSWER_DISTANCE = 435; // from the start line: a run-up to reach speed before the first answers
+const QUESTION_SPAWN_LEAD = 200; // a question (and its answers) appears when the car is this far before its slot
 const QUESTION_ZONE_DEPTH = 3; // used for the "did the car pass without answering" check, not letter thickness
 const QUESTION_TRIGGER_PADDING = { x: 0.8, y: 1.0, z: 2.4 }; // padding around the text's own bounds for reliable triggering
 const STAGGER_GAP_MIN = 55; // minimum extra forward distance between consecutive answers
 const STAGGER_GAP_JITTER = 35; // 0..this much additional random distance on top of the minimum
-const QUESTION_GAP_DISTANCE = 260; // empty-road distance after a question resolves before the next one's answers spawn
+const FINISH_CLEARANCE = 40; // the farthest answer of a question must sit at least this far before FINISH_Z
+const MAX_ANSWERS = 4; // largest answer count in the question bank
+const MAX_ANSWER_SPAN = (MAX_ANSWERS - 1) * (STAGGER_GAP_MIN + STAGGER_GAP_JITTER);
+const QUESTION_SLOT_SPACING =
+  (TRACK_LENGTH - FINISH_CLEARANCE - MAX_ANSWER_SPAN - FIRST_ANSWER_DISTANCE) / (QUESTIONS_PER_RACE - 1);
+
+// World Z of the nearest answer of question `index` (0-based).
+function questionSlotZ(index) {
+  return START_Z + FIRST_ANSWER_DISTANCE + index * QUESTION_SLOT_SPACING;
+}
 
 function shuffleIndices(count) {
   const arr = Array.from({ length: count }, (_, i) => i);
@@ -93,8 +97,7 @@ function shuffleIndices(count) {
   }
   return arr;
 }
-const questionZone = { answers: [], zoneZ: null, resolved: true, nextSpawnZ: -Infinity };
-let isFirstQuestionOfRace = true; // reset in resetRace(); gates FIRST_QUESTION_LOOKAHEAD
+const questionZone = { answers: [], zoneZ: null, resolved: true, spawnedCount: 0 };
 
 // Font: three.js's stock "helvetiker" in its bold cut, served from the same CDN as three itself
 // (three@0.160.0/examples/fonts/helvetiker_bold.typeface.json) — a JSON glyph-outline font,
@@ -126,8 +129,8 @@ composer.addPass(new RenderPass(scene, camera));
 
 const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.22, 0.45, 0.85);
 bloomPass.threshold = 0.82;
-bloomPass.strength = 0.28;
-bloomPass.radius = 0.3;
+bloomPass.strength = 0.18;
+bloomPass.radius = 0.26;
 composer.addPass(bloomPass);
 
 // SSAOPass removed deliberately. Its minDistance/maxDistance (0.005/0.12) are normalized against
@@ -237,13 +240,54 @@ const raceState = {
   countdown: 3,
   countdownTimer: 0,
   currentQuestion: null,
+  prizeMoney: 0, // pounds, plain number; formatted only on the results screen
+  correctCount: 0,
+  questionCount: 0, // questions actually shown this race
+  // Race timer, in performance.now() ms: set at GO, frozen at the finish line. Wall-clock rather
+  // than summed frame deltas, since delta is a fixed 1/60 and would drift on non-60Hz displays.
+  timerStart: null,
+  timerEnd: null,
 };
 
+function raceElapsedMs() {
+  if (raceState.timerStart === null) return 0;
+  return (raceState.timerEnd ?? performance.now()) - raceState.timerStart;
+}
+
+function formatRaceTime(ms) {
+  const totalMs = Math.max(0, Math.floor(ms));
+  const minutes = Math.floor(totalMs / 60000);
+  const seconds = Math.floor((totalMs % 60000) / 1000);
+  const millis = totalMs % 1000;
+  return `${minutes}:${String(seconds).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+}
+
+const PRIZE_PER_CORRECT = 20000;
+const prizeFormat = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 });
+const raceResultsEl = document.getElementById('race-results');
+
+function showRaceResults() {
+  const { correctCount, questionCount, prizeMoney } = raceState;
+  const scorePercent = questionCount ? Math.round((correctCount / questionCount) * 100) : 0;
+  document.getElementById('result-correct').textContent = String(correctCount);
+  document.getElementById('result-total').textContent = String(questionCount);
+  document.getElementById('result-score').textContent = `${scorePercent}%`;
+  document.getElementById('result-time').textContent = formatRaceTime(raceElapsedMs());
+  document.getElementById('result-amount').textContent = `Amount Won: ${prizeFormat.format(prizeMoney)}`;
+  raceResultsEl.hidden = false;
+}
+
 function resetRace() {
+  raceState.prizeMoney = 0;
+  raceState.correctCount = 0;
+  raceState.questionCount = 0;
+  raceResultsEl.hidden = true;
   raceState.finished = false;
   raceState.running = false;
   raceState.countdown = 3;
   raceState.countdownTimer = 0;
+  raceState.timerStart = null;
+  raceState.timerEnd = null;
   raceOverlayEl.classList.remove('hidden');
   raceMessageEl.textContent = '3';
   restartButtonEl.hidden = true;
@@ -262,8 +306,8 @@ function resetRace() {
     boost.visible = true;
     boost.position.set(idx % 2 === 0 ? -6 : 6, 1.2, START_Z + 120 + idx * (TRACK_LENGTH / 4));
   });
-  isFirstQuestionOfRace = true;
-  spawnQuestionZone();
+  questionZone.spawnedCount = 0;
+  spawnQuestionZone(); // the first question shows during the countdown, answers at its fixed slot
 }
 
 // resetRace() (and therefore the first spawnQuestionZone()) must not run until the font has
@@ -282,6 +326,7 @@ answerFontReady
 function updateTraffic(delta) {
   traffic.forEach((racer, index) => {
     racer.position.z += racer.userData.speed * delta;
+    racer.updateWheels(-racer.userData.speed * delta); // modelled facing -Z while moving +Z
     if (racer.position.z > FINISH_Z) {
       racer.position.z = START_Z;
       racer.position.x = racer.userData.lane;
@@ -300,13 +345,56 @@ function updateBoosts(delta) {
     if (d < 3) {
       boost.userData.active = false;
       boost.visible = false;
-      car.speed = Math.min(car.maxSpeed, car.speed + 12);
-      hudTextEl.textContent = 'Nitro boost activated!';
+      car.speed = Math.min(car.maxSpeed, MAX_SPEED, car.speed + 12);
     }
   });
 }
 
+// ---- hint mode (H key / HINT button), matching the arcade games' toggle. Answer colors mean
+// "slot", not "correct", so the hint highlights instead of recoloring: an outlined chip in the
+// answer list, plus a bobbing marker above the correct 3D answer, which also pulses.
+const hintButtonEl = document.getElementById('hint-button');
+let hintOn = false;
+const hintMarker = new THREE.Mesh(
+  new THREE.ConeGeometry(1.1, 2.4, 4).rotateX(Math.PI),
+  new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.9, fog: false })
+);
+hintMarker.visible = false;
+scene.add(hintMarker);
+
+function applyHintToHud() {
+  const correctIndex = raceState.currentQuestion ? raceState.currentQuestion.correctIndex : -1;
+  Array.from(questionAnswersEl.children).forEach((chip, i) => {
+    chip.classList.toggle('hinted', hintOn && i === correctIndex);
+  });
+}
+
+function setHint(on) {
+  hintOn = on;
+  hintButtonEl.textContent = 'HINT: ' + (on ? 'ON' : 'OFF');
+  applyHintToHud();
+}
+
+hintButtonEl.addEventListener('click', () => { setHint(!hintOn); hintButtonEl.blur(); });
+window.addEventListener('keydown', (e) => { if (e.code === 'KeyH' && !e.repeat) setHint(!hintOn); });
+
+function updateHintVisuals(now) {
+  const correctIndex = raceState.currentQuestion ? raceState.currentQuestion.correctIndex : -1;
+  const target = hintOn && !questionZone.resolved
+    ? questionZone.answers.find(entry => entry.answerIndex === correctIndex)
+    : null;
+  questionZone.answers.forEach(entry => {
+    entry.group.scale.setScalar(entry === target ? 1 + 0.08 * Math.sin(now * 0.006) : 1);
+  });
+  hintMarker.visible = !!target;
+  if (target) {
+    hintMarker.position.set(target.group.position.x, target.topY + 2.2 + Math.sin(now * 0.005) * 0.5, target.group.position.z);
+    hintMarker.rotation.y = now * 0.002;
+  }
+}
+
 function clearQuestionZone() {
+  hintMarker.visible = false;
   questionZone.answers.forEach(entry => {
     scene.remove(entry.group);
     entry.group.children.forEach(mesh => mesh.geometry.dispose());
@@ -320,23 +408,41 @@ function clearQuestionZone() {
 function showQuestionHud(question) {
   questionTextEl.textContent = question.text;
   questionAnswersEl.innerHTML = '';
-  // No color coding here either — same reasoning as the 3D letters, just a plain numbered list
-  // so the HUD doesn't accidentally hint at anything the track objects are deliberately hiding.
+  // Colored swatch + number, same slot->color mapping the 3D road text uses (answerColors.js) —
+  // the color reflects the answer's SLOT (its shuffled position), not its identity or
+  // correctness, so this can never fall out of sync with the road text for the same question.
   question.answers.forEach((answerText, i) => {
+    const { hex } = answerColorForSlot(i);
     const chip = document.createElement('div');
     chip.className = 'answer-chip';
+    const swatch = document.createElement('span');
+    swatch.className = 'answer-swatch';
+    swatch.style.background = hexToCssColor(hex);
+    const number = document.createElement('span');
+    number.className = 'answer-number';
+    number.style.color = hexToCssColor(hex);
+    number.textContent = `${i + 1}.`;
     const label = document.createElement('span');
-    label.textContent = `${i + 1}. ${answerText}`;
-    chip.append(label);
+    label.className = 'answer-label';
+    label.textContent = answerText;
+    chip.append(swatch, number, label);
     questionAnswersEl.appendChild(chip);
+    chip.classList.toggle('hinted', hintOn && i === question.correctIndex);
+    console.log(`[COLORS] 2-UI answer #${i + 1} "${answerText}": wanted ${hexToCssColor(hex)} | number inline="${number.style.color}" computed="${getComputedStyle(number).color}" | swatch computed="${getComputedStyle(swatch).backgroundColor}"`);
   });
   questionHudEl.classList.add('visible');
 }
 
-const answerTextMaterial = new THREE.MeshStandardMaterial({
-  color: ANSWER_TEXT_COLOR, emissive: ANSWER_TEXT_EMISSIVE, emissiveIntensity: 0.8,
+// One material per palette slot, built once and reused — the color->material mapping is fixed
+// and small (six entries), so there's no need to allocate a new material per spawned answer.
+const answerTextMaterials = ANSWER_COLORS.map(({ hex }) => new THREE.MeshStandardMaterial({
+  color: hex, emissive: hex, emissiveIntensity: 0.75,
   roughness: 0.3, metalness: 0.4,
-});
+  // Answers spawn 140+ ahead but city fog is opaque by 180; at house size, fogged text would
+  // stay unreadable until close, so it's exempt.
+  fog: false,
+}));
+answerTextMaterials.forEach((m, i) => console.log(`[COLORS] 0-MATERIAL ${i} (${ANSWER_COLORS[i].name}) created: color #${m.color.getHexString()} emissive #${m.emissive.getHexString()}`));
 
 // Builds one answer as a THREE.Group of solid extruded-letter TextGeometry meshes (word-wrapped
 // across up to TEXT_MAX_LINES lines, shrinking font size only if it still doesn't fit — plain
@@ -350,7 +456,9 @@ function measureWidth(str, size) {
   return width;
 }
 
-function buildAnswerTextGroup(text) {
+function buildAnswerTextGroup(text, slotIndex) {
+  const material = answerTextMaterials[slotIndex % answerTextMaterials.length];
+  console.log(`[COLORS] 3-3D-PICK answer #${slotIndex + 1} "${text}": material ${slotIndex % answerTextMaterials.length} color #${material.color.getHexString()}`);
   let size = TEXT_FONT_SIZE;
   let lines = [];
   for (let attempt = 0; attempt < 10; attempt++) {
@@ -372,15 +480,16 @@ function buildAnswerTextGroup(text) {
     // Both conditions matter: a single very long word (e.g. "Developer" on its own, no second
     // word to trigger the wrap check above) never gets caught by the wrap loop itself — it has
     // to be checked here, against the widest actual line, not just the line count.
-    if (lines.length <= TEXT_MAX_LINES && widestLine <= TEXT_MAX_LINE_WIDTH) break;
+    const layoutHeight = ((lines.length - 1) * TEXT_LINE_SPACING + TEXT_GLYPH_HEIGHT) * size;
+    if (lines.length <= TEXT_MAX_LINES && widestLine <= TEXT_MAX_LINE_WIDTH && layoutHeight <= TEXT_MAX_HEIGHT) break;
     // Multiplicative, not a fixed -0.25 step: the step has to scale with the font size or the
     // loop can't converge from a large starting size (at 13, ten fixed steps only reach 10.5,
     // leaving lines well over budget — measured at 70 units against a 55 budget).
-    size = Math.max(3.5, size * 0.88);
+    size = Math.max(TEXT_MIN_FONT_SIZE, size * 0.88);
   }
 
   const group = new THREE.Group();
-  const lineHeight = size * 1.3;
+  const lineHeight = size * TEXT_LINE_SPACING;
   const totalHeight = lineHeight * lines.length;
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   lines.forEach((line, i) => {
@@ -390,7 +499,7 @@ function buildAnswerTextGroup(text) {
     });
     geometry.computeBoundingBox();
     geometry.center(); // centers this line horizontally (and in Z) around local (0, *, 0)
-    const mesh = new THREE.Mesh(geometry, answerTextMaterial);
+    const mesh = new THREE.Mesh(geometry, material);
     mesh.position.y = totalHeight / 2 - i * lineHeight - lineHeight / 2;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -410,20 +519,18 @@ function spawnQuestionZone() {
   raceState.currentQuestion = question;
   if (!question) { questionHudEl.classList.remove('visible'); questionZone.resolved = true; return; }
 
-  showQuestionHud(question);
-
-  // The first set of a race sits much further out, so the opening stretch is just driving.
-  const lookahead = isFirstQuestionOfRace ? FIRST_QUESTION_LOOKAHEAD : QUESTION_LOOKAHEAD;
-  isFirstQuestionOfRace = false;
-  const baseZ = car.position.z + lookahead;
+  const baseZ = questionSlotZ(questionZone.spawnedCount);
+  questionZone.spawnedCount += 1;
   const count = question.answers.length;
-  const roadHalfWidth = 32; // lane spread, inset from the widened road edge at ±45 (see scene.js)
+  // Outer lane centers sit half a max-width answer inside the car's steering limit, so even the
+  // widest answer stays fully on the drivable road on both sides.
+  const laneSpread = DRIVABLE_HALF_WIDTH - TEXT_MAX_LINE_WIDTH / 2;
   // Lane positions: answer 0 (of the lane list, NOT the answer list — see the shuffle below)
   // lands leftmost on screen. For this chase camera, world +X renders on screen-LEFT (verified
   // empirically, not assumed — see the coastal biome work), so lane 0 gets the most-positive X.
   const laneX = Array.from({ length: count }, (_, i) => {
     const t = count === 1 ? 0.5 : i / (count - 1);
-    return roadHalfWidth - t * (roadHalfWidth * 2);
+    return laneSpread - t * (laneSpread * 2);
   });
   // Forward stagger: a strictly increasing sequence of distances built from randomized gaps, so
   // answers are strung out along the road instead of all sitting at the same Z.
@@ -433,6 +540,9 @@ function spawnQuestionZone() {
     if (i > 0) cumulative += STAGGER_GAP_MIN + Math.random() * STAGGER_GAP_JITTER;
     distances.push(cumulative);
   }
+
+  showQuestionHud(question);
+  raceState.questionCount += 1;
 
   // Two independent shuffles decide which answer gets which lane and which answer gets which
   // forward slot — neither is tied to answer order, so the correct answer isn't reliably the
@@ -446,7 +556,7 @@ function spawnQuestionZone() {
     const z = baseZ + distances[distanceOrder[i]];
     maxAnswerZ = Math.max(maxAnswerZ, z);
 
-    const { group, localBounds } = buildAnswerTextGroup(answerText);
+    const { group, localBounds } = buildAnswerTextGroup(answerText, i);
     // Ground clearance: lines stack symmetrically around the group's local y=0 (see
     // buildAnswerTextGroup), so for multi-line answers the lower line(s) sit at negative local
     // y — position the group so the LOWEST point of the actual text sits just above the road,
@@ -454,6 +564,9 @@ function spawnQuestionZone() {
     const groundClearance = 0.35;
     group.position.set(x, groundClearance - localBounds.minY, z);
     scene.add(group);
+    const meshColors = [...new Set(group.children.map(c => c.material ? '#' + c.material.color.getHexString() : 'no-material'))];
+    const { hex: expectedHex } = answerColorForSlot(i);
+    console.log(`[COLORS] 4-3D-APPLIED answer #${i + 1} "${answerText}": expected ${hexToCssColor(expectedHex)} | ${group.children.length} mesh(es) in scene with color(s) ${meshColors.join(', ')}`);
 
     const pad = QUESTION_TRIGGER_PADDING;
     const collisionBox = new THREE.Box3(
@@ -461,7 +574,7 @@ function spawnQuestionZone() {
       new THREE.Vector3(x + localBounds.maxX + pad.x, group.position.y + localBounds.maxY + pad.y, z + localBounds.maxZ + pad.z)
     );
 
-    return { group, collisionBox, answerIndex: i };
+    return { group, collisionBox, answerIndex: i, topY: group.position.y + localBounds.maxY };
   });
   // Expiry uses the FARTHEST answer's Z, not the base lookahead — the car has to pass every
   // possible answer position before the question counts as missed, not just the first one.
@@ -469,17 +582,15 @@ function spawnQuestionZone() {
   questionZone.resolved = false;
 }
 
-// Resolving a question (hit or missed) doesn't spawn the next one immediately — it clears the
-// road and schedules the next spawn QUESTION_GAP_DISTANCE further down the track, so there's a
-// real empty-road breather between questions instead of back-to-back quizzing.
+// Resolving a question (hit or missed) clears the road; the next one waits for its own slot.
 function resolveQuestionZone() {
   clearQuestionZone();
-  questionZone.nextSpawnZ = car.position.z + QUESTION_GAP_DISTANCE;
 }
 
 function updateQuestionZone() {
   if (questionZone.resolved) {
-    if (car.position.z >= questionZone.nextSpawnZ) spawnQuestionZone();
+    const next = questionZone.spawnedCount;
+    if (next < QUESTIONS_PER_RACE && car.position.z >= questionSlotZ(next) - QUESTION_SPAWN_LEAD) spawnQuestionZone();
     return;
   }
 
@@ -492,7 +603,10 @@ function updateQuestionZone() {
 
     if (entry.collisionBox.containsPoint(car.position)) {
       const correct = entry.answerIndex === raceState.currentQuestion.correctIndex;
-      hudTextEl.textContent = correct ? 'Correct!' : 'Not quite — next question coming up.';
+      if (correct) {
+        raceState.correctCount += 1;
+        raceState.prizeMoney += PRIZE_PER_CORRECT;
+      }
       resolveQuestionZone();
       return;
     }
@@ -510,7 +624,6 @@ function updateCollisions() {
       const push = car.position.clone().sub(racer.position).normalize();
       car.position.add(push.multiplyScalar(0.95));
       car.speed *= 0.6;
-      hudTextEl.textContent = 'Impact! Hold your line.';
     }
   });
 }
@@ -581,17 +694,23 @@ function updateOcean(delta) {
   });
 }
 
-function updateHud() {
-  const speed = Math.round(Math.abs(car.speed) * 6);
-  hudSpeedEl.textContent = `${speed} km/h`;
-  hudObjectiveEl.textContent = raceState.finished ? 'Finish' : 'Race';
-  if (raceState.finished) {
-    hudTextEl.textContent = 'Finish line crossed — good run.';
-  } else if (!raceState.running) {
-    hudTextEl.textContent = 'Ready for the green light...';
-  } else {
-    hudTextEl.textContent = 'WASD / Arrows to drive — reach the finish line.';
+function updateStartLights() {
+  if (raceState.running) {
+    startLights.red.material.emissiveIntensity = 0;
+    startLights.yellow.material.emissiveIntensity = 0;
+    startLights.green.material.emissiveIntensity = 0;
+    return;
   }
+  const t = Math.min(Math.max(raceState.countdownTimer, 0), 3);
+  startLights.red.material.emissiveIntensity = t < 1 ? 1.5 : 0.12;
+  startLights.yellow.material.emissiveIntensity = t >= 1 && t < 2 ? 1.5 : 0.12;
+  startLights.green.material.emissiveIntensity = t >= 2 && t < 3 ? 1.5 : 0.12;
+}
+
+function updateHud() {
+  const speed = Math.round(Math.abs(car.speed) * UNITS_TO_MPH);
+  hudSpeedEl.textContent = `${speed} mph`;
+  hudTimeEl.textContent = formatRaceTime(raceElapsedMs());
 }
 
 function animate() {
@@ -606,15 +725,19 @@ function animate() {
     }
     if (raceState.countdownTimer >= 3) {
       raceState.running = true;
+      raceState.timerStart = performance.now(); // race timer starts at GO, as control is handed over
       raceOverlayEl.classList.add('hidden');
       raceMessageEl.textContent = 'GO';
-      hudTextEl.textContent = 'GO!';
     }
   }
+
+  updateStartLights();
+  updateHintVisuals(performance.now());
 
   if (raceState.running) {
     const state = input.getState();
     const physics = updateCarPhysics(car, state, delta);
+    car.updateWheels(car.speed * delta);
     updateTraffic(delta);
     updateBoosts(delta);
     updateQuestionZone();
@@ -624,8 +747,10 @@ function animate() {
     raceState.progress = THREE.MathUtils.clamp((car.position.z - START_Z) / TRACK_LENGTH, 0, 1);
     if (!raceState.finished && car.position.z > FINISH_Z - 13 && Math.abs(car.speed) > 8) {
       raceState.finished = true;
+      raceState.timerEnd = performance.now(); // race timer stops on crossing the finish line
       raceOverlayEl.classList.remove('hidden');
       raceMessageEl.textContent = 'FINISH';
+      showRaceResults();
       restartButtonEl.hidden = false;
     }
     window.__racing = { car, camera, scene, renderer, physics, raceState, pickNextQuestion };

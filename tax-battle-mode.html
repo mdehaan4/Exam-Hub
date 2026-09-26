@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Exam Hub — Tax Quest</title>
+    <style>
+      :root {
+        --bg-1: #120f1c;
+        --bg-2: #1f1b2a;
+        --panel: rgba(18, 16, 28, 0.82);
+        --panel-soft: rgba(48, 36, 63, 0.8);
+        --gold: #f8d170;
+        --gold-strong: #f7b84b;
+        --mint: #87f3d7;
+        --pink: #ff7ab6;
+        --sky: #7ab8ff;
+        --text: #f5f1ff;
+        --muted: #cec2ea;
+        --danger: #ff7b7b;
+        --success: #7be4a1;
+        --line: rgba(255,255,255,0.12);
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        min-height: 100%;
+        background:
+          radial-gradient(circle at top, rgba(255, 143, 94, 0.18), transparent 24%),
+          radial-gradient(circle at 85% 10%, rgba(90, 152, 255, 0.22), transparent 24%),
+          linear-gradient(180deg, var(--bg-1), var(--bg-2));
+        color: var(--text);
+        font-family: Arial, Helvetica, sans-serif;
+      }
+
+      body {
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .hidden { display: none !important; }
+
+      .onboarding-overlay {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(7, 8, 16, 0.72);
+        backdrop-filter: blur(7px);
+        z-index: 20;
+      }
+
+      .onboarding-card {
+        width: min(460px, calc(100vw - 32px));
+        padding: 26px 22px 18px;
+        border-radius: 22px;
+        background: rgba(23, 20, 32, 0.96);
+        border: 1px solid var(--line);
+        box-shadow: 0 24px 70px rgba(0,0,0,0.38);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        background: rgba(255, 216, 128, 0.12);
+        color: var(--gold);
+        border: 1px solid rgba(255, 216, 128, 0.3);
+      }
+
+      .onboarding-card h1 {
+        margin: 18px 0 10px;
+        font-size: clamp(2rem, 4vw, 3rem);
+        letter-spacing: 0.04em;
+      }
+
+      .onboarding-card p {
+        margin: 0 0 18px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .form-row {
+        margin-bottom: 16px;
+      }
+
+      .form-row label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 700;
+        color: #fff;
+      }
+
+      .form-row input,
+      .form-row select,
+      .form-row button {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.15);
+        background: rgba(255,255,255,0.04);
+        color: var(--text);
+        padding: 12px 14px;
+        font-size: 1rem;
+      }
+
+      .form-row input:focus,
+      .form-row select:focus {
+        outline: 2px solid rgba(252, 199, 93, 0.7);
+        border-color: transparent;
+      }
+
+      .error-text {
+        min-height: 18px;
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--danger);
+      }
+
+      .submit-btn {
+        cursor: pointer;
+        border: none;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        background: linear-gradient(135deg, #ffd782, #ec9f3c);
+        color: #1e1108;
+        transition: transform 0.15s ease, filter 0.15s ease;
+      }
+
+      .submit-btn:hover {
+        filter: brightness(1.04);
+        transform: translateY(-1px);
+      }
+
+      .game-shell {
+        max-width: 1180px;
+        margin: 0 auto;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 24px;
+        padding: 12px 16px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgba(17, 17, 27, 0.52);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .brand-mark {
+        width: 38px;
+        height: 38px;
+        display: grid;
+        place-items: center;
+        border-radius: 12px;
+        background: linear-gradient(135deg, rgba(248,209,112,0.25), rgba(127,174,255,0.22));
+        border: 1px solid rgba(255,255,255,0.12);
+        font-size: 1.4rem;
+      }
+
+      .brand-title {
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .brand-sub {
+        font-size: 12px;
+        color: var(--muted);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .topbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .pill,
+      .ghost-btn {
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: rgba(255,255,255,0.04);
+        color: var(--text);
+        padding: 8px 12px;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .ghost-btn {
+        cursor: pointer;
+      }
+
+      .arena {
+        display: grid;
+        grid-template-columns: 280px minmax(0, 1fr);
+        gap: 20px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+      }
+
+      .sidebar {
+        padding: 20px 18px;
+      }
+
+      .trainer-card {
+        padding: 16px;
+        border-radius: 18px;
+        background: linear-gradient(180deg, rgba(89,72,121,0.38), rgba(21,19,31,0.8));
+        border: 1px solid rgba(255,255,255,0.09);
+      }
+
+      .trainer-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .trainer-name {
+        margin: 0;
+        font-size: 1.2rem;
+      }
+
+      .trainer-rank {
+        font-size: 11px;
+        letter-spacing: 0.09em;
+        color: var(--gold);
+        text-transform: uppercase;
+      }
+
+      .profile-sprite {
+        margin: 18px 0 14px;
+        width: 74px;
+        height: 74px;
+        border-radius: 18px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, rgba(133, 120, 255, 0.18), rgba(255, 131, 178, 0.18));
+        border: 1px solid rgba(255,255,255,0.12);
+        font-size: 2.4rem;
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0,1fr));
+        gap: 12px;
+      }
+
+      .stat-box {
+        padding: 10px 8px;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+      }
+
+      .stat-label {
+        display: block;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+
+      .stat-value {
+        display: block;
+        margin-top: 6px;
+        font-weight: 800;
+      }
+
+      .team-card {
+        margin-top: 18px;
+        padding: 16px;
+        border-radius: 18px;
+        background: rgba(255,255,255,0.02);
+        border: 1px solid rgba(255,255,255,0.08);
+      }
+
+      .team-card h3 {
+        margin: 0 0 12px;
+        font-size: 12px;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .team-list {
+        display: grid;
+        gap: 12px;
+      }
+
+      .team-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+      }
+
+      .team-sprite {
+        width: 38px;
+        height: 38px;
+        display: grid;
+        place-items: center;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.04);
+        font-size: 1.3rem;
+      }
+
+      .team-copy {
+        flex: 1;
+      }
+
+      .team-copy strong {
+        display: block;
+        font-size: 0.9rem;
+      }
+
+      .mini-bar {
+        position: relative;
+        width: 100%;
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.08);
+        overflow: hidden;
+        margin-top: 5px;
+      }
+
+      .mini-bar > span {
+        position: absolute;
+        inset: 0 auto 0 0;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #67e8a4, #a8f7c5);
+      }
+
+      .battle-panel,
+      .world-panel {
+        padding: 20px;
+      }
+
+      .battle-panel {
+        background: linear-gradient(180deg, rgba(27, 21, 38, 0.96), rgba(15, 15, 23, 0.96));
+        border: 1px solid rgba(255,255,255,0.1);
+        box-shadow: 0 22px 54px rgba(6, 7, 12, 0.38);
+      }
+
+      .world-panel {
+        position: relative;
+      }
+
+      .world-canvas {
+        width: 100%;
+        height: 500px;
+        display: block;
+        border-radius: 20px;
+        border: 1px solid rgba(255,255,255,0.1);
+        background: linear-gradient(180deg, rgba(29, 60, 82, 0.72), rgba(19, 23, 31, 0.9));
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+      }
+
+      .battle-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .enemy-label {
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+
+      .enemy-name {
+        margin-top: 4px;
+        font-size: clamp(1.2rem, 2vw, 2rem);
+        font-weight: 800;
+      }
+
+      .hp-pill {
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid var(--line);
+        min-width: 160px;
+      }
+
+      .hp-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 6px;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+
+      .hp-bar {
+        position: relative;
+        height: 12px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.08);
+        overflow: hidden;
+      }
+
+      .hp-bar > span {
+        position: absolute;
+        inset: 0 auto 0 0;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #7ef7ae, #3dcc7d);
+      }
+
+      .battle-stage {
+        position: relative;
+        min-height: 260px;
+        display: grid;
+        place-items: center;
+        border-radius: 22px;
+        border: 1px solid rgba(255,255,255,0.1);
+        background:
+          radial-gradient(circle at 50% 20%, rgba(255, 185, 88, 0.36), transparent 26%),
+          radial-gradient(circle at 52% 68%, rgba(138, 92, 255, 0.34), transparent 30%),
+          linear-gradient(180deg, rgba(77, 57, 117, 0.42), rgba(12, 14, 22, 0.88));
+        overflow: hidden;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+      }
+
+      .battle-stage::before {
+        content: "";
+        position: absolute;
+        inset: 18px 18px auto 18px;
+        height: 50%;
+        border-radius: 50%;
+        background: linear-gradient(180deg, rgba(255,255,255,0.12), transparent);
+        filter: blur(10px);
+      }
+
+      .arena-glow {
+        position: absolute;
+        width: 62%;
+        height: 62%;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(246, 183, 102, 0.48), rgba(246, 183, 102, 0.10) 35%, transparent 68%);
+        filter: blur(22px);
+      }
+
+      .enemy-sprite, .player-sprite {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        place-items: center;
+        width: 140px;
+        height: 140px;
+        border-radius: 28px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+        border: 1px solid rgba(255,255,255,0.12);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 18px 30px rgba(0,0,0,0.18);
+        font-size: clamp(4rem, 10vw, 7rem);
+        filter: drop-shadow(0 20px 26px rgba(0,0,0,0.28));
+      }
+
+      .enemy-sprite {
+        transform: translateX(-14px) translateY(14px);
+      }
+
+      .player-sprite {
+        position: absolute;
+        right: 14%;
+        bottom: 12%;
+        width: 110px;
+        height: 110px;
+        font-size: clamp(2.8rem, 7vw, 5rem);
+        transform: scaleX(-1);
+        background: linear-gradient(180deg, rgba(128, 162, 255, 0.18), rgba(255,255,255,0.03));
+      }
+
+      .dialogue-box {
+        margin-top: 18px;
+        padding: 16px 18px;
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,0.08);
+        background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+        color: var(--text);
+        line-height: 1.5;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+      }
+
+      .question-card {
+        margin-top: 18px;
+        padding: 18px 18px 12px;
+        border-radius: 18px;
+        background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+        border: 1px solid rgba(255,255,255,0.08);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+      }
+
+      .question-tag {
+        display: inline-block;
+        margin-bottom: 8px;
+        padding: 6px 9px;
+        border-radius: 999px;
+        background: rgba(122, 184, 255, 0.12);
+        color: #b8d9ff;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .question-text {
+        margin: 0;
+        font-size: clamp(1rem, 1.8vw, 1.25rem);
+        line-height: 1.55;
+      }
+
+      .answer-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0,1fr));
+        gap: 12px;
+        margin-top: 18px;
+      }
+
+      .answer-btn {
+        appearance: none;
+        border: 1px solid rgba(255,255,255,0.08);
+        background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+        color: var(--text);
+        padding: 14px 16px;
+        border-radius: 14px;
+        font-size: 0.98rem;
+        min-height: 72px;
+        text-align: left;
+        cursor: pointer;
+        transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+      }
+
+      .answer-btn:hover {
+        transform: translateY(-1px);
+        border-color: rgba(255,255,255,0.22);
+        box-shadow: 0 10px 18px rgba(0,0,0,0.12);
+      }
+
+      .answer-btn.correct {
+        background: rgba(123, 228, 161, 0.16);
+        border-color: rgba(123, 228, 161, 0.5);
+      }
+
+      .answer-btn.wrong {
+        background: rgba(255, 123, 123, 0.14);
+        border-color: rgba(255, 123, 123, 0.42);
+      }
+
+      .battle-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .primary-btn,
+      .secondary-btn {
+        border: none;
+        border-radius: 12px;
+        padding: 12px 16px;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      .primary-btn {
+        background: linear-gradient(135deg, #ffd782, #ec9f3c);
+        color: #18120c;
+      }
+
+      .secondary-btn {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.12);
+        color: var(--text);
+      }
+
+      @media (max-width: 820px) {
+        body { padding: 12px; }
+        .arena {
+          grid-template-columns: 1fr;
+        }
+        .topbar {
+          flex-wrap: wrap;
+        }
+        .answer-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="onboardingOverlay" class="onboarding-overlay">
+      <div class="onboarding-card">
+        <span class="badge">New trainer</span>
+        <h1>Tax Quest</h1>
+        <p>Choose your trainer and enter the arena. Every encounter is a quick tax question battle — answer correctly to win.</p>
+
+        <form id="onboardingForm" novalidate>
+          <div class="form-row">
+            <label for="trainerName">Trainer name</label>
+            <input id="trainerName" name="trainerName" type="text" maxlength="32" placeholder="e.g. Alex" />
+            <div id="nameError" class="error-text"></div>
+          </div>
+
+          <div class="form-row">
+            <label for="trainerSubject">Study route</label>
+            <select id="trainerSubject" name="trainerSubject">
+              <option value="uktax">UK Tax Fundamentals</option>
+              <option value="gitlab">GitLab Fundamentals Associate</option>
+              <option value="postgresql">PostgreSQL Fundamentals</option>
+              <option value="awscloud">AWS Cloud Practitioner</option>
+              <option value="awsai">AWS AI Practitioner</option>
+              <option value="istqb">ISTQB Foundation</option>
+              <option value="saasinfra">SaaS Infrastructure</option>
+            </select>
+          </div>
+
+          <button class="submit-btn" type="submit">Enter the arena</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="gameShell" class="game-shell hidden">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark">🧾</div>
+          <div>
+            <div class="brand-title">Tax Quest</div>
+            <div class="brand-sub">Exam Hub Battle Mode</div>
+          </div>
+        </div>
+
+        <div class="topbar-actions">
+          <span id="subjectPill" class="pill">UK Tax</span>
+          <button id="btnReset" class="ghost-btn" type="button">New trainer</button>
+        </div>
+      </header>
+
+      <main class="arena">
+        <aside class="panel sidebar">
+          <section class="trainer-card">
+            <div class="trainer-header">
+              <h2 id="trainerNameView" class="trainer-name">Trainer</h2>
+              <span class="trainer-rank">Lvl <span id="trainerLevel">1</span></span>
+            </div>
+
+            <div class="profile-sprite">🧑‍🚀</div>
+
+            <div class="stats-grid">
+              <div class="stat-box">
+                <span class="stat-label">HP</span>
+                <span id="playerHpValue" class="stat-value">100</span>
+              </div>
+              <div class="stat-box">
+                <span class="stat-label">XP</span>
+                <span id="xpValue" class="stat-value">0</span>
+              </div>
+              <div class="stat-box">
+                <span class="stat-label">Badges</span>
+                <span id="badgeValue" class="stat-value">0</span>
+              </div>
+              <div class="stat-box">
+                <span class="stat-label">Wins</span>
+                <span id="winsValue" class="stat-value">0</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="team-card">
+            <h3>Squad</h3>
+            <div id="teamList" class="team-list"></div>
+          </section>
+        </aside>
+
+        <section id="worldPanel" class="panel world-panel">
+          <div class="battle-top">
+            <div>
+              <div class="enemy-label">Route</div>
+              <div id="mapLocation" class="enemy-name">Maple Lane</div>
+            </div>
+            <div class="hp-pill">
+              <div class="hp-row"><span>Wilds</span><span id="encounterLabel">Calm</span></div>
+              <div class="hp-bar"><span id="routeBar" style="width:40%"></span></div>
+            </div>
+          </div>
+
+          <div id="worldStage" class="world-canvas" aria-label="Overworld route"></div>
+          <div id="worldMessage" class="dialogue-box">Walk the route with WASD or arrow keys. Press Enter to start a battle.</div>
+        </section>
+
+        <section id="battlePanel" class="panel battle-panel hidden">
+          <div class="battle-top">
+            <div>
+              <div class="enemy-label">Wild encounter</div>
+              <div id="enemyName" class="enemy-name">Tax Wisp</div>
+            </div>
+
+            <div class="hp-pill">
+              <div class="hp-row"><span>HP</span><span id="enemyHpText">100 / 100</span></div>
+              <div class="hp-bar"><span id="enemyHpBar" style="width:100%"></span></div>
+            </div>
+          </div>
+
+          <div class="battle-stage">
+            <div class="arena-glow"></div>
+            <div id="enemySprite" class="enemy-sprite">🦊</div>
+            <div class="player-sprite">🧑‍🎓</div>
+          </div>
+
+          <div id="dialogueBox" class="dialogue-box">A new tax challenge appears. Study carefully and win the round.</div>
+
+          <div class="question-card">
+            <span class="question-tag">Question</span>
+            <p id="questionText" class="question-text">Loading question…</p>
+          </div>
+
+          <div id="answerGrid" class="answer-grid"></div>
+
+          <div class="battle-actions">
+            <button id="btnNextEncounter" class="secondary-btn" type="button">Next encounter</button>
+            <button id="btnTryAgain" class="primary-btn" type="button">Battle again</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="./tax-battle-module/main.js"></script>
+    <script type="module" src="./tax-battle-module/phaser-route.js"></script>
+  </body>
+</html>

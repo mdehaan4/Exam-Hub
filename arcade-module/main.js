@@ -22,6 +22,9 @@ const HUB_DESCRIPTIONS = {
   pacman: 'Pac-Man style: navigate a maze through 10 questions sampled at random. Eat the answer node with the correct text — wrong guesses are shown, but nothing is lost. Dodge the ghosts along the way.',
   forest: 'A Pokémon-inspired city walk: explore a street scene with shops and buildings, walk down the road, and chat with computer-controlled walkers while collecting the feeling of a starter RPG.',
   'racing-demo': 'Launch the standalone browser racing game with a chase camera, drifting car handling, and modern 3D visuals.',
+  hmrc: 'A top-down, Pokémon-style walkabout: explore an indoor fairground hall on foot with WASD or the arrow keys. (Early build — just the hall and movement for now.)',
+  'tax-battle': 'A Pokémon-inspired quiz battle: a trainer explores encounters, answers tax and tech questions, and wins badges by picking the correct answer in a turn-based fight.',
+  chess: 'Classic two-player chess on one screen: drag or click pieces, with full rules — castling, en passant, promotion, check, checkmate and stalemate. No quiz questions, just chess.',
   race: 'Head-to-head against a friend on the same 10 questions in real time — one of you hosts, the other joins, by swapping two links. No account needed. Works only on the GitHub Pages version of this app, not this preview.',
 };
 function updateHubDesc(){
@@ -40,6 +43,18 @@ document.getElementById('btnStart').addEventListener('click', ()=>{
   else if(selMode.value==='forest') startForestMode(subject);
   else if(selMode.value==='racing-demo') {
     window.location.href = './racing-demo.html?subject=' + encodeURIComponent(subject);
+    return;
+  }
+  else if(selMode.value==='hmrc') {
+    window.location.href = './hmrc-mode.html?subject=' + encodeURIComponent(subject);
+    return;
+  }
+  else if(selMode.value==='tax-battle') {
+    window.location.href = './tax-battle-mode.html?subject=' + encodeURIComponent(subject);
+    return;
+  }
+  else if(selMode.value==='chess') {
+    window.location.href = './chess.html';
     return;
   }
   else if(selMode.value==='race') startRace(subject);

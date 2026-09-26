@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Exam Hub — HMRC Mode</title>
+    <style>
+      html, body {
+        margin: 0;
+        height: 100%;
+        background: #1a1420;
+        overflow: hidden;
+      }
+      body {
+        font-family: Arial, sans-serif;
+      }
+      #game-root {
+        position: fixed;
+        inset: 0;
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+      #game-root.visible {
+        visibility: visible;
+        opacity: 1;
+      }
+      #game-root canvas {
+        display: block;
+      }
+      .hmrc-hud {
+        position: fixed;
+        left: 16px;
+        top: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        background: rgba(20, 14, 26, 0.72);
+        color: #fff;
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        backdrop-filter: blur(4px);
+        z-index: 1;
+      }
+      .hmrc-hud a { color: #ffe08a; text-decoration: none; font-weight: 700; }
+      .hmrc-hud a:hover { text-decoration: underline; }
+      .hmrc-hud .title { font-weight: 800; letter-spacing: 0.1em; }
+      .hmrc-hud .keys { opacity: 0.75; }
+
+      .onboarding-overlay {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(11, 13, 20, 0.8);
+        backdrop-filter: blur(6px);
+        z-index: 10;
+      }
+
+      .onboarding-card {
+        width: min(420px, calc(100vw - 32px));
+        background: rgba(26, 24, 34, 0.96);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 18px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+        padding: 24px 22px 18px;
+        color: #f3f4f7;
+      }
+
+      .onboarding-card h2 {
+        margin: 0 0 8px;
+        font-size: 28px;
+        text-align: center;
+      }
+
+      .onboarding-card p {
+        margin: 0 0 20px;
+        color: #d3d7df;
+        text-align: center;
+        font-size: 14px;
+      }
+
+      .form-row {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+
+      .form-row label {
+        font-weight: 700;
+        font-size: 14px;
+        color: #e8edf8;
+      }
+
+      .form-row input,
+      .form-row select {
+        width: 100%;
+        box-sizing: border-box;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.04);
+        color: #fff;
+        padding: 12px 14px;
+        font-size: 15px;
+      }
+
+      .form-row input:focus,
+      .form-row select:focus {
+        outline: 2px solid rgba(255, 201, 106, 0.7);
+        border-color: transparent;
+      }
+
+      .error-text {
+        min-height: 18px;
+        margin: 6px 0 0;
+        color: #ff8c8c;
+        font-size: 12px;
+      }
+
+      .submit-btn {
+        display: block;
+        width: 100%;
+        border: none;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #f7c76e, #d98d2d);
+        color: #1b140d;
+        font-weight: 800;
+        padding: 12px 14px;
+        cursor: pointer;
+        font-size: 15px;
+      }
+
+      .submit-btn:hover {
+        filter: brightness(1.03);
+      }
+
+      .hidden {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game-root"></div>
+    <div class="hmrc-hud">
+      <a href="./index.html">← Hub</a>
+      <span class="title">HMRC MODE</span>
+      <span class="keys">WASD / Arrows to walk</span>
+    </div>
+
+    <div id="onboardingOverlay" class="onboarding-overlay">
+      <div class="onboarding-card">
+        <h2>Welcome</h2>
+        <p>Please enter your details to begin the HMRC game.</p>
+
+        <form id="onboardingForm" novalidate>
+          <div class="form-row">
+            <label for="playerName">Name</label>
+            <input id="playerName" name="name" type="text" maxlength="80" placeholder="Enter your name" />
+            <div id="nameError" class="error-text"></div>
+          </div>
+
+          <div class="form-row">
+            <label for="playerAge">Age</label>
+            <input id="playerAge" name="age" type="number" min="1" max="120" placeholder="Enter your age" />
+            <div id="ageError" class="error-text"></div>
+          </div>
+
+          <div class="form-row">
+            <label for="employmentStatus">Employment status</label>
+            <select id="employmentStatus" name="employmentStatus">
+              <option value="">Select status</option>
+              <option value="Employed">Employed</option>
+              <option value="Self-employed">Self-employed</option>
+            </select>
+            <div id="employmentError" class="error-text"></div>
+          </div>
+
+          <button type="submit" class="submit-btn">Start Game</button>
+        </form>
+      </div>
+    </div>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "phaser": "https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.esm.min.js"
+        }
+      }
+    </script>
+    <script type="module" src="./hmrc-module/main.js"></script>
+  </body>
+</html>

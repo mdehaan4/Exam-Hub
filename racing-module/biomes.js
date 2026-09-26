@@ -20,18 +20,19 @@ export const BIOMES = [
   },
   {
     name: 'coastal',
-    start: 380,
-    // Bright coastal atmosphere: lighter/hazier blue sky, warmer low sun.
-    sky: { top: 0x59b3e6, bottom: 0xe8f6f4 },
-    fog: { color: 0xcfe9ee, near: 70, far: 260 },
-    sun: { color: 0xfff1c9, intensity: 0.85 },
-    ambient: { intensity: 0.75 },
+    start: 650,
+    // Coastal zone was being washed out by a near-white fog haze plus a bright sky; back off
+    // to a cooler, less blown-out palette so mid-distance geometry stays readable.
+    sky: { top: 0x4d9dd3, bottom: 0xdfeef3 },
+    fog: { color: 0x9bb9c9, near: 62, far: 225 },
+    sun: { color: 0xf8e4b8, intensity: 0.72 },
+    ambient: { intensity: 0.64 },
     ground: { color: 0xdccb95 }, // sand tint (right-side city ground keeps its own texture — see scene.js)
     props: 'coastal',
   },
   {
     name: 'desert',
-    start: 760,
+    start: 1300,
     sky: { top: 0x5b7ea8, bottom: 0xf2c88a },
     fog: { color: 0xd9b487, near: 60, far: 230 },
     sun: { color: 0xffe0a8, intensity: 0.72 },
@@ -41,7 +42,7 @@ export const BIOMES = [
   },
   {
     name: 'jungle',
-    start: 1200,
+    start: 2050,
     // Bright daytime jungle, not the dark/dusk canopy look this used to have: clear sky blue
     // fading to a light (but NOT near-white — see below) horizon, high-visibility fog, and both
     // sun and ambient raised above every other biome to counteract how much shadow the dense
@@ -67,9 +68,16 @@ export function getNextBiome(biome) {
   return i >= 0 ? BIOMES[i + 1] || null : null;
 }
 
-export const TRACK_LENGTH = 1700; // total start-to-finish distance
+export const TRACK_LENGTH = 2900; // total start-to-finish distance; long enough for 5 question slots (main.js)
 export const START_Z = -TRACK_LENGTH / 2;
 export const FINISH_Z = TRACK_LENGTH / 2;
+
+// Asphalt width, centered on x = 0. Everything positioned relative to the road edge (curbs,
+// shoulders, guardrails, roadside props, the car's steering limit) derives from this.
+export const ROAD_WIDTH = 90;
+export const ROAD_HALF_WIDTH = ROAD_WIDTH / 2;
+// How far from center the car's position may go (keeps its body on the asphalt).
+export const DRIVABLE_HALF_WIDTH = ROAD_HALF_WIDTH - 3;
 
 // distance (0..TRACK_LENGTH) -> world Z
 export function distanceToZ(distance) { return START_Z + distance; }

@@ -3,8 +3,30 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   BIOMES, TRANSITION_LENGTH, TRACK_LENGTH, START_Z, FINISH_Z, distanceToZ,
-  getBiomeByName, getNextBiome,
-} from './biomes.js';
+  getBiomeByName, getNextBiome, ROAD_WIDTH, ROAD_HALF_WIDTH,
+} from './biomes.js?v=12';
+
+const CURB_OFFSET = 1.6; // curb center, beyond the road edge (curb is 1.2 wide)
+const SHOULDER_OFFSET = 7; // shoulder center (shoulder is 14 wide, so it spans the edge to +14)
+const GUARDRAIL_OFFSET = 8.5; // guardrail center (rail is 0.7 wide)
+// Gap between the road edge and the nearest point of any tree/cactus/rock canopy. Clears the
+// curb (outer face +2.2) and the guardrail (outer face +8.85) with ~1 unit to spare.
+const ROADSIDE_PROP_MARGIN = 10;
+
+// Largest horizontal distance of any vertex from the geometry's own Y axis — rotation-invariant,
+// so it bounds the footprint no matter how an instance is spun around Y.
+function footprintRadius(geometry) {
+  const pos = geometry.attributes.position;
+  let r = 0;
+  for (let i = 0; i < pos.count; i++) r = Math.max(r, Math.hypot(pos.getX(i), pos.getZ(i)));
+  return r;
+}
+
+// X for a roadside prop on the given side (+1/-1) so its whole footprint sits at least
+// ROADSIDE_PROP_MARGIN beyond the road edge, then pushed a random 0..spread further out.
+function roadsideX(side, radius, spread) {
+  return side * (ROAD_HALF_WIDTH + ROADSIDE_PROP_MARGIN + radius + Math.random() * spread);
+}
 
 // Procedural tinted noise texture, reused per biome (city/desert/jungle) with a different base
 // color and speckle palette so each biome's ground reads as a distinct material, not just a
@@ -29,6 +51,24 @@ function buildGroundTexture(baseColor, speckleColor, speckleCount) {
 // Dedicated beach sand, rather than reusing the generic tinted-noise ground texture: fine grain
 // speckle, wind-blown dune streaks, scattered pebbles and shell flecks, plus a damp/darker band
 // so the sand doesn't read as one flat tone.
+function buildCheckeredTexture(size = 256, squareSize = 16) {
+  const c = document.createElement('canvas');
+  c.width = size; c.height = size / 2;
+  const ctx = c.getContext('2d');
+  const dark = '#111111';
+  const light = '#f5f5f2';
+  for (let y = 0; y < c.height; y += squareSize) {
+    for (let x = 0; x < c.width; x += squareSize) {
+      ctx.fillStyle = ((x / squareSize + y / squareSize) % 2 === 0) ? light : dark;
+      ctx.fillRect(x, y, squareSize, squareSize);
+    }
+  }
+  const texture = new THREE.CanvasTexture(c);
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  return texture;
+}
+
 function buildSandTexture() {
   const S = 512;
   const c = document.createElement('canvas');
@@ -250,7 +290,7 @@ export function createScene() {
   const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 500);
   camera.position.set(0, 6.2, START_Z + 6.5); // matches where the chase camera settles for the spawn position
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
@@ -263,7 +303,6 @@ export function createScene() {
   const envScene = new RoomEnvironment(renderer);
   scene.environment = pmremGenerator.fromScene(envScene, 0.04).texture;
   scene.environmentIntensity = 1.3;
-
   const ambient = new THREE.HemisphereLight(0xd7e7ff, 0x455a45, 0.6);
   scene.add(ambient);
 
@@ -348,7 +387,7 @@ export function createScene() {
       // Spans from the far city side all the way to the road's outer edge (+45), not just to x=0 —
       // with the road now 90 units wide, stopping at the centreline would leave the whole right
       // half of the carriageway with no ground under it.
-      const cityGroundWidth = GROUND_WIDTH / 2 + 45;
+      const cityGroundWidth = GROUND_WIDTH / 2 + ROAD_HALF_WIDTH;
       const rightGround = new THREE.Mesh(
         new THREE.PlaneGeometry(cityGroundWidth, halfLen),
         new THREE.MeshStandardMaterial({ map: groundTextures.city, color: cityBiome.ground.color, roughness: 0.94, metalness: 0.08, envMapIntensity: 0.85 })
@@ -364,7 +403,7 @@ export function createScene() {
         new THREE.MeshStandardMaterial({ map: groundTextures.coastal, color: biome.ground.color, roughness: 0.9, metalness: 0.02, envMapIntensity: 0.8 })
       );
       beachGround.rotation.x = -Math.PI / 2;
-      beachGround.position.set(45 + BEACH_WIDTH / 2, 0, midZ);
+      beachGround.position.set(ROAD_HALF_WIDTH + BEACH_WIDTH / 2, 0, midZ);
       beachGround.receiveShadow = true;
       scene.add(beachGround);
 
@@ -474,7 +513,7 @@ export function createScene() {
       // displace instead of being flattened by the tessellation.
       const ocean = new THREE.Mesh(new THREE.PlaneGeometry(OCEAN_WIDTH, halfLen, 80, 40), oceanMat);
       ocean.rotation.x = -Math.PI / 2;
-      ocean.position.set(45 + BEACH_WIDTH + OCEAN_WIDTH / 2, -0.15, midZ);
+      ocean.position.set(ROAD_HALF_WIDTH + BEACH_WIDTH + OCEAN_WIDTH / 2, -0.15, midZ);
       scene.add(ocean);
       oceanMaterials.push(oceanMat);
     } else {
@@ -527,11 +566,8 @@ export function createScene() {
     roadCtx.fillStyle = y % 36 === 0 ? '#31373d' : '#262b31';
     roadCtx.fillRect(0, y, roadCanvas.width, 18);
   }
-  roadCtx.fillStyle = '#d6d7c8';
-  for (let y = 24; y < roadCanvas.height; y += 72) {
-    roadCtx.fillRect(246, y, 20, 28);
-    roadCtx.fillRect(246, y + 36, 20, 28);
-  }
+  // No centre dashes painted here: across the 90-unit road a 20px dash came out ~3.5 units wide
+  // and read as a glowing beam. The centerLine mesh below is the only centre marking.
   roadCtx.fillStyle = '#e4e0bf';
   roadCtx.fillRect(0, 0, roadCanvas.width, 8);
   roadCtx.fillRect(0, roadCanvas.height - 8, roadCanvas.width, 8);
@@ -556,31 +592,53 @@ export function createScene() {
     envMapIntensity: 0.7,
   });
 
-  const trackLeft = new THREE.Mesh(new THREE.BoxGeometry(14, 0.15, TRACK_LENGTH), shoulderMat);
-  trackLeft.position.set(-52, 0.08, 0);
+  const trackLeft = new THREE.Mesh(new THREE.BoxGeometry(SHOULDER_OFFSET * 2, 0.15, TRACK_LENGTH), shoulderMat);
+  trackLeft.position.set(-(ROAD_HALF_WIDTH + SHOULDER_OFFSET), 0.08, 0);
   trackLeft.receiveShadow = true;
   scene.add(trackLeft);
 
   const trackRight = trackLeft.clone();
-  trackRight.position.x = 52;
+  trackRight.position.x = ROAD_HALF_WIDTH + SHOULDER_OFFSET;
   scene.add(trackRight);
 
-  const road = new THREE.Mesh(new THREE.BoxGeometry(90, 0.2, TRACK_LENGTH), roadMat);
+  const road = new THREE.Mesh(new THREE.BoxGeometry(ROAD_WIDTH, 0.2, TRACK_LENGTH), roadMat);
   road.position.y = 0.05;
   road.receiveShadow = true;
   scene.add(road);
 
-  const centerLine = new THREE.Mesh(
-    new THREE.BoxGeometry(0.5, 0.04, TRACK_LENGTH),
-    new THREE.MeshStandardMaterial({ color: 0xf5f0c5, emissive: 0x4f481d, roughness: 0.6, metalness: 0.08 })
+  // Matte, slightly off-white paint with no emissive, so it reads as road paint rather than a light.
+  const centerLineMaterial = new THREE.MeshStandardMaterial({
+    color: 0xd8d4bc,
+    roughness: 0.85,
+    metalness: 0,
+    polygonOffset: true,
+    polygonOffsetFactor: 2,
+    polygonOffsetUnits: 4,
+  });
+  // Dashed centre line: ~25cm wide at this scale (car ≈ 2 units wide), 4-unit dashes every
+  // 12 units (the usual 1:2 dash-to-gap road marking), as one InstancedMesh so it's one draw call.
+  const DASH_LENGTH = 4;
+  const DASH_PERIOD = 12;
+  const dashCount = Math.floor(TRACK_LENGTH / DASH_PERIOD);
+  const centerLine = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(0.25, 0.04, DASH_LENGTH),
+    centerLineMaterial,
+    dashCount
   );
-  centerLine.position.y = 0.12;
+  const dashMatrix = new THREE.Matrix4();
+  for (let i = 0; i < dashCount; i++) {
+    dashMatrix.makeTranslation(0, 0, -TRACK_LENGTH / 2 + DASH_PERIOD * i + DASH_LENGTH / 2);
+    centerLine.setMatrixAt(i, dashMatrix);
+  }
+  // The lift keeps the dashes just above the asphalt (road top is y = 0.15), which is what stops
+  // the z-fighting flicker; the stripe used to sit at 0.12, inside the road.
+  centerLine.position.y = 0.18;
   scene.add(centerLine);
 
   const curbMaterial = new THREE.MeshStandardMaterial({ color: 0xd1d9df, roughness: 0.8, metalness: 0.12 });
   const curbProps = [
-    { x: -46.6, z: 0 },
-    { x: 46.6, z: 0 },
+    { x: -(ROAD_HALF_WIDTH + CURB_OFFSET), z: 0 },
+    { x: ROAD_HALF_WIDTH + CURB_OFFSET, z: 0 },
   ];
   curbProps.forEach(({ x, z }) => {
     const curb = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.3, TRACK_LENGTH), curbMaterial);
@@ -593,7 +651,8 @@ export function createScene() {
   // buildings — they're one InstancedMesh rather than one Mesh per post.
   const barrierPositions = [];
   for (let z = START_Z + 10; z <= FINISH_Z - 10; z += 12) {
-    barrierPositions.push({ z, x: -53.5 }, { z, x: 53.5 });
+    const x = ROAD_HALF_WIDTH + GUARDRAIL_OFFSET;
+    barrierPositions.push({ z, x: -x }, { z, x });
   }
   const barriers = new THREE.InstancedMesh(
     new THREE.BoxGeometry(0.7, 0.9, 4.8),
@@ -622,12 +681,12 @@ export function createScene() {
     for (let d = 10; d <= cityZoneEndDist; d += 18) {
       const z = distanceToZ(d);
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 5.8, 10), poleMaterial);
-      pole.position.set(side * 61, 2.9, z);
+      pole.position.set(side * (ROAD_HALF_WIDTH + 16), 2.9, z);
       pole.castShadow = true;
       scene.add(pole);
 
       const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.25, 18, 18), lightMaterial);
-      lamp.position.set(side * 61, 5.5, z);
+      lamp.position.set(side * (ROAD_HALF_WIDTH + 16), 5.5, z);
       lamp.castShadow = true;
       scene.add(lamp);
     }
@@ -658,7 +717,7 @@ export function createScene() {
       const depth = 6 + Math.random() * 6;
       buildingSpecs.push({
         width, height, depth,
-        x: side * (71 + Math.random() * 22),
+        x: side * (ROAD_HALF_WIDTH + 26 + Math.random() * 22),
         z: z + (Math.random() - 0.5) * 6,
         colorIndex: Math.floor(Math.random() * buildingColors.length),
       });
@@ -678,7 +737,7 @@ export function createScene() {
       const depth = 6 + Math.random() * 6;
       buildingSpecs.push({
         width, height, depth,
-        x: -(71 + Math.random() * 22),
+        x: -(ROAD_HALF_WIDTH + 26 + Math.random() * 22),
         z: z + (Math.random() - 0.5) * 6,
         colorIndex: Math.floor(Math.random() * buildingColors.length),
       });
@@ -829,6 +888,8 @@ export function createScene() {
     const umbrellaPole = new THREE.CylinderGeometry(0.05, 0.05, 2.2, 6).translate(0, 1.1, 0);
     const umbrellaCanopy = new THREE.ConeGeometry(1.1, 0.6, 10).translate(0, 2.3, 0);
     const umbrellaGeometry = mergeGeometries([umbrellaPole, umbrellaCanopy]);
+    const palmRadius = footprintRadius(palmGeometry);
+    const umbrellaRadius = footprintRadius(umbrellaGeometry);
 
     const coastalPropZoneStart = coastalBiome.start;
     const coastalPropZoneEnd = desertBiome ? desertBiome.start - TRANSITION_LENGTH : TRACK_LENGTH;
@@ -836,11 +897,13 @@ export function createScene() {
     const umbrellaSpecs = [];
     for (let d = coastalPropZoneStart; d <= coastalPropZoneEnd; d += 16) {
       const z = distanceToZ(d) + (Math.random() - 0.5) * 6;
-      const x = 56 + Math.random() * 40; // within the relocated sand strip, clear of the road shoulder
+      // +X only: the sand strip is on that side. Spread keeps them on the beach (edge +62).
       if (Math.random() < 0.65) {
-        palmSpecs.push({ x, z, scale: 0.8 + Math.random() * 0.5, rotY: Math.random() * Math.PI * 2 });
+        const scale = 0.8 + Math.random() * 0.5;
+        palmSpecs.push({ x: roadsideX(1, palmRadius * scale, 36), z, scale, rotY: Math.random() * Math.PI * 2 });
       } else {
-        umbrellaSpecs.push({ x, z, scale: 0.8 + Math.random() * 0.4, rotY: Math.random() * Math.PI * 2 });
+        const scale = 0.8 + Math.random() * 0.4;
+        umbrellaSpecs.push({ x: roadsideX(1, umbrellaRadius * scale, 36), z, scale, rotY: Math.random() * Math.PI * 2 });
       }
     }
     const umbrellaColors = [0xe0524a, 0xf2c94c, 0x4fa8dd, 0xf2f2f2];
@@ -899,11 +962,11 @@ export function createScene() {
       const roll = Math.random();
       // bias grass toward the road side, rocks/driftwood toward the waterline
       if (roll < 0.4) {
-        grassSpecs.push({ x: 52 + Math.random() * 16, z, scale: 0.7 + Math.random() * 0.8, rotY: Math.random() * Math.PI * 2 });
+        grassSpecs.push({ x: ROAD_HALF_WIDTH + 7 + Math.random() * 16, z, scale: 0.7 + Math.random() * 0.8, rotY: Math.random() * Math.PI * 2 });
       } else if (roll < 0.72) {
-        rockSpecsBeach.push({ x: 70 + Math.random() * 28, z, scale: 0.35 + Math.random() * 0.75, rotY: Math.random() * Math.PI * 2 });
+        rockSpecsBeach.push({ x: ROAD_HALF_WIDTH + 25 + Math.random() * 28, z, scale: 0.35 + Math.random() * 0.75, rotY: Math.random() * Math.PI * 2 });
       } else {
-        driftSpecs.push({ x: 78 + Math.random() * 24, z, scale: 0.6 + Math.random() * 0.8, rotY: Math.random() * Math.PI * 2 });
+        driftSpecs.push({ x: ROAD_HALF_WIDTH + 33 + Math.random() * 24, z, scale: 0.6 + Math.random() * 0.8, rotY: Math.random() * Math.PI * 2 });
       }
     }
 
@@ -947,6 +1010,8 @@ export function createScene() {
   cactusArmR.rotateZ(-0.9); cactusArmR.translate(0.5, 2.0, 0);
   const cactusGeometry = mergeGeometries([cactusTrunk, cactusArmL, cactusArmR]);
   const rockGeometry = new THREE.IcosahedronGeometry(1, 0).translate(0, 0.55, 0);
+  const cactusRadius = footprintRadius(cactusGeometry);
+  const rockRadius = footprintRadius(rockGeometry);
 
   const desertZoneStartDist = desertBiome.start - TRANSITION_LENGTH;
   const desertZoneEndDist = jungleBiome ? jungleBiome.start : TRACK_LENGTH;
@@ -955,11 +1020,12 @@ export function createScene() {
   for (let d = desertZoneStartDist; d <= desertZoneEndDist; d += 14) {
     const z = distanceToZ(d) + (Math.random() - 0.5) * 8;
     [-1, 1].forEach(side => {
-      const x = side * (57 + Math.random() * 14);
       if (Math.random() < 0.6) {
-        cactusSpecs.push({ x, z, scale: 0.7 + Math.random() * 0.7, rotY: Math.random() * Math.PI * 2 });
+        const scale = 0.7 + Math.random() * 0.7;
+        cactusSpecs.push({ x: roadsideX(side, cactusRadius * scale, 14), z, scale, rotY: Math.random() * Math.PI * 2 });
       } else {
-        rockSpecs.push({ x, z, scale: 0.5 + Math.random() * 1.3, rotY: Math.random() * Math.PI * 2 });
+        const scale = 0.5 + Math.random() * 1.3;
+        rockSpecs.push({ x: roadsideX(side, rockRadius * scale, 14), z, scale, rotY: Math.random() * Math.PI * 2 });
       }
     });
   }
@@ -997,13 +1063,14 @@ export function createScene() {
   const jungleTrunk = new THREE.CylinderGeometry(0.2, 0.26, 2.2, 8).translate(0, 1.1, 0);
   const jungleCrown = new THREE.ConeGeometry(1.5, 3.2, 10).translate(0, 2.2 + 1.6, 0);
   const jungleTreeGeometry = mergeGeometries([jungleTrunk, jungleCrown]);
+  const jungleTreeRadius = footprintRadius(jungleTreeGeometry);
   const jungleZoneStartDist = jungleBiome.start - TRANSITION_LENGTH;
   const jungleTreeSpecs = [];
   for (let d = jungleZoneStartDist; d <= TRACK_LENGTH; d += 9) {
     const z = distanceToZ(d) + (Math.random() - 0.5) * 5;
     [-1, 1].forEach(side => {
-      const x = side * (24 + Math.random() * 20);
-      jungleTreeSpecs.push({ x, z, scale: 0.8 + Math.random() * 0.6, rotY: Math.random() * Math.PI * 2 });
+      const scale = 0.8 + Math.random() * 0.6;
+      jungleTreeSpecs.push({ x: roadsideX(side, jungleTreeRadius * scale, 30), z, scale, rotY: Math.random() * Math.PI * 2 });
     });
   }
   const jungleTrees = new THREE.InstancedMesh(
@@ -1042,13 +1109,66 @@ export function createScene() {
   finishLine.castShadow = true;
   scene.add(finishLine);
 
+  const checkeredStartTexture = buildCheckeredTexture();
   const startLine = new THREE.Mesh(
-    new THREE.BoxGeometry(15.5, 1.7, 0.45),
-    new THREE.MeshStandardMaterial({ color: 0xf5f0db, emissive: 0xa57a26, emissiveIntensity: 0.18, roughness: 0.55, metalness: 0.14 })
+    new THREE.PlaneGeometry(15.5, 1.1),
+    new THREE.MeshStandardMaterial({
+      map: checkeredStartTexture,
+      color: 0xffffff,
+      roughness: 0.82,
+      metalness: 0.05,
+      emissive: 0x111111,
+      emissiveIntensity: 0.08,
+    })
   );
-  startLine.position.set(0, 1.05, START_Z + 35); // ahead of the grid, so the car launches across it
-  startLine.castShadow = true;
+  startLine.rotation.x = -Math.PI / 2;
+  startLine.position.set(0, 0.08, START_Z + 24);
+  startLine.receiveShadow = true;
   scene.add(startLine);
+
+  const startGantry = new THREE.Group();
+  const gantryPostMaterial = new THREE.MeshStandardMaterial({ color: 0x1f2937, metalness: 0.6, roughness: 0.45 });
+  const gantryPostLeft = new THREE.Mesh(new THREE.BoxGeometry(0.6, 6.2, 0.6), gantryPostMaterial);
+  const gantryPostRight = gantryPostLeft.clone();
+  const gantryCrossbar = new THREE.Mesh(new THREE.BoxGeometry(15.2, 0.45, 0.45), gantryPostMaterial);
+  gantryPostLeft.position.set(-6.8, 3.1, 0);
+  gantryPostRight.position.set(6.8, 3.1, 0);
+  gantryCrossbar.position.set(0, 6.2, 0);
+  startGantry.add(gantryPostLeft, gantryPostRight, gantryCrossbar);
+  startGantry.position.set(0, 0, START_Z + 24);
+  scene.add(startGantry);
+
+  const startBannerCanvas = document.createElement('canvas');
+  startBannerCanvas.width = 512;
+  startBannerCanvas.height = 128;
+  const startBannerCtx = startBannerCanvas.getContext('2d');
+  startBannerCtx.fillStyle = '#0f172a';
+  startBannerCtx.fillRect(0, 0, startBannerCanvas.width, startBannerCanvas.height);
+  startBannerCtx.fillStyle = '#f8fafc';
+  startBannerCtx.font = '700 76px Arial';
+  startBannerCtx.textAlign = 'center';
+  startBannerCtx.textBaseline = 'middle';
+  startBannerCtx.fillText('START', startBannerCanvas.width / 2, startBannerCanvas.height / 2 + 6);
+  const startBannerTexture = new THREE.CanvasTexture(startBannerCanvas);
+  const startBanner = new THREE.Mesh(
+    new THREE.PlaneGeometry(7.8, 1.8),
+    new THREE.MeshBasicMaterial({ map: startBannerTexture, transparent: false })
+  );
+  startBanner.position.set(0, 5.8, 0.5);
+  startGantry.add(startBanner);
+
+  const lightMaterialRed = new THREE.MeshStandardMaterial({ color: 0xff3b30, emissive: 0xff3b30, emissiveIntensity: 0.0, roughness: 0.4, metalness: 0.2 });
+  const lightMaterialYellow = new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xfbbf24, emissiveIntensity: 0.0, roughness: 0.4, metalness: 0.2 });
+  const lightMaterialGreen = new THREE.MeshStandardMaterial({ color: 0x22c55e, emissive: 0x22c55e, emissiveIntensity: 0.0, roughness: 0.4, metalness: 0.2 });
+  const startLights = {
+    red: new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), lightMaterialRed),
+    yellow: new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), lightMaterialYellow),
+    green: new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 16), lightMaterialGreen),
+  };
+  startLights.red.position.set(-2.1, 5.15, 0.7);
+  startLights.yellow.position.set(0, 5.15, 0.7);
+  startLights.green.position.set(2.1, 5.15, 0.7);
+  Object.values(startLights).forEach(light => startGantry.add(light));
 
   // Sky sphere + sun disc are re-centered on the camera every frame (see main.js) so they
   // always surround the player no matter where they are on a track now 1400m long — and their
@@ -1101,7 +1221,7 @@ export function createScene() {
   scene.add(sunDisc);
 
   return {
-    scene, camera, renderer, sun, ambient, fill, finishLine, startLine, sunDisc, skyGlow,
+    scene, camera, renderer, sun, ambient, fill, finishLine, startLine, startLights, sunDisc, skyGlow,
     buildingsNear, buildingsFar, buildingSpecs, oceanMaterials,
   };
 }

@@ -1,11 +1,17 @@
-import { TRACK_LENGTH } from './biomes.js';
+import { TRACK_LENGTH, DRIVABLE_HALF_WIDTH } from './biomes.js?v=12';
+
+// car.speed is in world units/s; the HUD has always shown units * 6 as km/h, so keep that scale
+// and derive mph from it. The top speed is capped here in the physics (not just the readout).
+export const UNITS_TO_MPH = 6 * 0.621371;
+export const MAX_SPEED_MPH = 130;
+export const MAX_SPEED = MAX_SPEED_MPH / UNITS_TO_MPH; // ≈ 34.9 units/s
 
 export function updateCarPhysics(car, input, delta) {
   const accelerationForce = 26;
   const brakingForce = 30;
   const drag = 9;
   const steerBase = 1.15;
-  const trackHalfWidth = 42; // road widened to 90 units (see scene.js) for building-scale answer text
+  const trackHalfWidth = DRIVABLE_HALF_WIDTH;
   const trackLength = TRACK_LENGTH + 40; // a little slack past the finish before any wrap safety net kicks in
 
   const throttle = input.forward ? 1 : 0;
@@ -24,7 +30,8 @@ export function updateCarPhysics(car, input, delta) {
     car.speed = Math.max(0, car.speed);
   }
 
-  if (car.speed > car.maxSpeed) car.speed = car.maxSpeed;
+  const speedCap = Math.min(car.maxSpeed, MAX_SPEED);
+  if (car.speed > speedCap) car.speed = speedCap;
   if (Math.abs(car.speed) < 0.12) car.speed = 0;
 
   const speedFactor = Math.min(Math.abs(car.speed) / 26, 1.5);

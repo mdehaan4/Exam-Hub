@@ -21,9 +21,9 @@
       }
       canvas { display: block; width: 100%; height: 100%; }
       .hud {
-        display: none;
+        display: flex;
         position: fixed;
-        left: 20px;
+        right: 20px;
         top: 20px;
         flex-direction: column;
         gap: 8px;
@@ -38,13 +38,13 @@
         box-shadow: 0 12px 30px rgba(0,0,0,0.18);
       }
       .hud-row { display: flex; gap: 12px; align-items: baseline; }
-      .hud-value { font-size: 18px; font-weight: 700; letter-spacing: 0.04em; }
+      .hud-value { font-variant-numeric: tabular-nums; font-size: 18px; font-weight: 700; letter-spacing: 0.04em; }
       .hud-label { opacity: 0.72; }
-      .hud-objective { font-size: 11px; letter-spacing: 0.06em; line-height: 1.5; max-width: 300px; }
       #race-overlay {
         position: fixed;
         inset: 0;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         background: rgba(7, 10, 14, 0.35);
@@ -101,15 +101,50 @@
       .question-hud.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
       .question-hud .question-text { font-size: 15px; font-weight: 700; line-height: 1.4; }
       .question-hud .question-answers { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; font-size: 12px; }
-      .question-hud .answer-chip { display: flex; align-items: center; gap: 6px; }
+      .question-hud .answer-chip { display: flex; align-items: center; gap: 6px; padding: 3px 7px; border-radius: 6px; border: 1.5px solid transparent; }
+      .question-hud .answer-chip.hinted { border-color: #ffffff; background: rgba(255,255,255,0.14); box-shadow: 0 0 10px rgba(255,255,255,0.45); }
+      .hint-button {
+        position: fixed;
+        left: 20px;
+        top: 20px;
+        padding: 8px 12px;
+        border: 1px solid rgba(255,255,255,0.4);
+        border-radius: 8px;
+        background: rgba(9, 14, 18, 0.72);
+        color: white;
+        font: 700 12px Arial, sans-serif;
+        letter-spacing: 0.08em;
+        cursor: pointer;
+        backdrop-filter: blur(6px);
+      }
+      .hint-button:hover { border-color: #fff; }
+      .race-results {
+        margin-top: 18px;
+        min-width: 280px;
+        padding: 18px 26px;
+        border-radius: 12px;
+        background: rgba(9, 14, 18, 0.78);
+        color: white;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+      }
+      .race-results[hidden] { display: none; }
+      .race-results .result-row { display: flex; justify-content: space-between; gap: 24px; padding: 5px 0; font-size: 15px; }
+      .race-results .result-row span:first-child { opacity: 0.75; }
+      .race-results .result-row span:last-child { font-weight: 700; }
+      .race-results .result-time { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.2); }
+      .race-results .result-time span:first-child { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.75; }
+      .race-results .result-time span:last-child { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; }
+      .race-results .result-amount { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.2); text-align: center; font-size: 22px; font-weight: 800; color: #ffd166; }
+      .question-hud .answer-number { font-weight: 800; margin-right: -2px; }
+      .question-hud .answer-label { color: #f2f4f7; }
+      .question-hud .answer-swatch { width: 11px; height: 11px; border-radius: 3px; flex: 0 0 auto; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
     </style>
   </head>
   <body>
     <div id="racing-root"></div>
     <div class="hud" id="hud">
-      <div class="hud-row"><span class="hud-label">Speed</span><span class="hud-value" id="hud-speed">0</span></div>
-      <div class="hud-row"><span class="hud-label">Objective</span><span class="hud-value" id="hud-objective">Race</span></div>
-      <div class="hud-objective" id="hud-text">WASD / Arrows to drive — reach the finish line.</div>
+      <div class="hud-row"><span class="hud-label">Speed</span><span class="hud-value" id="hud-speed">0 mph</span></div>
+      <div class="hud-row"><span class="hud-label">Time</span><span class="hud-value" id="hud-time">0:00.000</span></div>
     </div>
     <div class="question-hud" id="question-hud">
       <div class="question-text" id="question-text"></div>
@@ -117,8 +152,16 @@
     </div>
     <div id="race-overlay">
       <div id="race-message">3</div>
+      <div id="race-results" class="race-results" hidden>
+        <div class="result-time"><span>Final Time</span><span id="result-time">0:00.000</span></div>
+        <div class="result-row"><span>Correct answers</span><span id="result-correct">0</span></div>
+        <div class="result-row"><span>Total questions</span><span id="result-total">0</span></div>
+        <div class="result-row"><span>Final score</span><span id="result-score">0%</span></div>
+        <div class="result-amount" id="result-amount">Amount Won: £0</div>
+      </div>
     </div>
     <button id="restart-button" class="restart-button" hidden>Restart</button>
+    <button id="hint-button" class="hint-button" title="Toggle hint (H)">HINT: OFF</button>
     <script type="importmap">
       {
         "imports": {
@@ -127,6 +170,6 @@
         }
       }
     </script>
-    <script type="module" src="./racing-module/main.js"></script>
+    <script type="module" src="./racing-module/main.js?v=26"></script>
   </body>
 </html>
