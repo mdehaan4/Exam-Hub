@@ -4,13 +4,16 @@ import {
   COLORS, FONT_MONO, SUBJECTS, clamp, drawParticleList, drawPixelText, drawPopupList, ensureAudio,
   hexToRgba, loadHighScore, modalOpen, openHighScoreEntry, openLeaderboard, pctOf,
   qualifiesForLeaderboard, roundRect, saveHighScore, sfx, shuffleAnswerOptions, shuffleArray,
+  saveSessionSalary, openPaymentInfo, formatGBP,
   spawnExplosionInto, spawnPopupInto, updateParticleList, updatePopupList, G,
-} from './shared.js';
-import { btnMute, goToHub, showScreen, toggleHint } from './arcade.js';
+} from './shared.js?v=15';
+import { btnMute, goToHub, showScreen, toggleHint } from './arcade.js?v=15';
 
 // ---------- penalty shootout mode ----------
 const PEN_LOGICAL_W = 600, PEN_LOGICAL_H = 440;
 const PENALTY_SHOTS = 5;
+// End-of-game reward: each goal scored is worth this much gross annual salary.
+const SALARY_PER_GOAL = 15000;
 const PEN_FLIGHT_TIME = 0.5;
 const GOAL = { x:110, y:70, w:380, h:150 };
 const KEEPER_HOME = { x:300, y:GOAL.y+GOAL.h-6 };
@@ -38,6 +41,7 @@ const penQNumEl = document.getElementById('penQNum');
 const btnPenMute = document.getElementById('btnPenMute');
 export const btnPenHint = document.getElementById('btnPenHint');
 const btnPenHubBtn = document.getElementById('btnPenHub');
+const btnPenPayEl = document.getElementById('btnPenPay');
 
 export function resizePenaltyCanvas(){
   const rect = penScreenWrapEl.getBoundingClientRect();
@@ -74,6 +78,7 @@ function loadPenaltyQuestion(n){
 }
 
 function resetPenalty(){
+  btnPenPayEl.hidden = true;
   penScore = 0; penStreak = 0; penCorrect = 0;
   penParticles = []; penPopups = [];
   penQuizOrder = shuffleArray(Array.from({length:SUBJECTS[G.currentSubject].questions.length}, (_,i)=>i)).slice(0, PENALTY_SHOTS);
@@ -140,6 +145,16 @@ function finishPenalty(){
   updatePenaltyHud();
   sfx.complete();
   penState = 'complete';
+  // The reward becomes the player's gross annual salary for this session (see shared.js).
+  saveSessionSalary({
+    grossAnnualSalary: penCorrect * SALARY_PER_GOAL,
+    goals: penCorrect,
+    perGoal: SALARY_PER_GOAL,
+    source: 'penalty',
+    subject: G.currentSubject,
+    recordedAt: new Date().toISOString(),
+  });
+  btnPenPayEl.hidden = false;
   if(qualifiesForLeaderboard('penalty_', penScore)) openHighScoreEntry('penalty_', penScore, 'PENALTY SHOOTOUT');
 }
 
@@ -527,8 +542,9 @@ export function renderPenalty(){
     drawPixelText(penCtx, 'SHOOTOUT COMPLETE', PEN_LOGICAL_W/2, 190, {scale:3.0, color:COLORS.amber, glow:22, fontSize:13});
     drawPixelText(penCtx, 'SCORE ' + String(penScore).padStart(6,'0'), PEN_LOGICAL_W/2, 228, {scale:2.0, color:COLORS.ink, glow:10, fontSize:10});
     drawPixelText(penCtx, penCorrect + ' / ' + penQuizOrder.length + ' SCORED (' + pct + '%)', PEN_LOGICAL_W/2, 258, {scale:1.8, color:COLORS.violet, glow:8, fontSize:9});
+    drawPixelText(penCtx, 'ANNUAL SALARY ' + formatGBP(penCorrect * SALARY_PER_GOAL), PEN_LOGICAL_W/2, 290, {scale:1.9, color:COLORS.amber, glow:10, fontSize:9});
     if(Math.floor(performance.now()/500)%2===0){
-      drawPixelText(penCtx, 'PRESS ENTER TO RETRY', PEN_LOGICAL_W/2, 288, {scale:1.6, color:COLORS.ink, glow:6, fontSize:9});
+      drawPixelText(penCtx, 'PRESS ENTER TO RETRY', PEN_LOGICAL_W/2, 320, {scale:1.6, color:COLORS.ink, glow:6, fontSize:9});
     }
   }
 
@@ -564,6 +580,8 @@ penScreenWrapEl.addEventListener('pointerdown', e=>{
 
 window.addEventListener('keydown', e=>{
   if(G.appMode!=='penalty' || modalOpen) return;
+  // Enter/Space on a focused button (e.g. See Payment Information) belongs to that button.
+  if((e.code==='Enter' || e.code==='Space') && e.target.closest && e.target.closest('button')) return;
   if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Enter','Digit1','Digit2','Digit3','Digit4'].includes(e.code)) e.preventDefault();
   ensureAudio();
   if(e.code==='Enter'){
@@ -594,6 +612,9 @@ btnPenHint.textContent = 'HINT: ' + (G.debugReveal?'ON':'OFF');
 btnPenHint.addEventListener('click', toggleHint);
 btnPenHubBtn.addEventListener('click', goToHub);
 document.getElementById('btnPenScores').addEventListener('click', ()=>{ ensureAudio(); openLeaderboard('penalty_', 'PENALTY SHOOTOUT'); });
+// On the end screen a press on the canvas means "retry"; this button's press mustn't reach it.
+btnPenPayEl.addEventListener('pointerdown', e=>e.stopPropagation());
+btnPenPayEl.addEventListener('click', ()=>{ ensureAudio(); openPaymentInfo(null, { onPlayAgain: resetPenalty }); });
 
 export function startPenalty(subjectKey){
   G.currentSubject = subjectKey;
@@ -603,6 +624,7 @@ export function startPenalty(subjectKey){
   penScore = 0; penStreak = 0; penCorrect = 0;
   penShotZone = -1;
   penState = 'title';
+  btnPenPayEl.hidden = true;
   btnPenMute.textContent = 'SND: ' + (G.muted?'OFF':'ON');
   updatePenaltyHud();
   showScreen('penalty');

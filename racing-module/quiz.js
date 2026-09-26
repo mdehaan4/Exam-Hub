@@ -37,23 +37,36 @@ function shuffleAnswers(answers, correctIndex) {
   };
 }
 
-let pool = [];
-
-// Picks the next question without repeating one until every question in the subject has been
-// drawn once, then reshuffles and starts a fresh pass. Call this whenever the game needs a new
-// question — at race start, on a checkpoint, on a boost pickup, etc.
-export function pickNextQuestion() {
-  if (!subject || !subject.questions || subject.questions.length === 0) return null;
-  if (pool.length === 0) pool = shuffle(subject.questions);
-  const raw = pool.pop();
-  const { answers, correctIndex } = shuffleAnswers(raw.answers, raw.correct);
-  return {
-    subjectKey,
-    subjectName: subject.name,
-    category: raw.category,
-    text: raw.q,
-    answers,
-    correctIndex,
-    explanation: raw.explanation,
+// Returns a function that picks the next question for `key`, without repeating one until every
+// question in the subject has been drawn once, then reshuffles for a fresh pass — making sure the
+// new pass doesn't start with the question that just ended the old one. Returns null for an
+// unknown or empty subject. Each picker keeps its own pool.
+export function createQuestionPicker(key) {
+  const subj = SUBJECTS[key];
+  let pool = [];
+  let last = null;
+  return function pickQuestion() {
+    if (!subj || !subj.questions || subj.questions.length === 0) return null;
+    if (pool.length === 0) {
+      pool = shuffle(subj.questions);
+      // pool.pop() draws from the end, so move a repeat of `last` away from it.
+      if (pool.length > 1 && pool[pool.length - 1] === last) [pool[0], pool[pool.length - 1]] = [pool[pool.length - 1], pool[0]];
+    }
+    const raw = pool.pop();
+    last = raw;
+    const { answers, correctIndex } = shuffleAnswers(raw.answers, raw.correct);
+    return {
+      subjectKey: key,
+      subjectName: subj.name,
+      category: raw.category,
+      text: raw.q,
+      answers,
+      correctIndex,
+      explanation: raw.explanation,
+    };
   };
 }
+
+// The racing game's picker, for the subject in this page's ?subject= parameter. Call this whenever
+// the game needs a new question — at race start, on a checkpoint, on a boost pickup, etc.
+export const pickNextQuestion = createQuestionPicker(subjectKey);

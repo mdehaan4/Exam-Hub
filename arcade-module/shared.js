@@ -28,7 +28,12 @@ export const SHADE = {
 
 
 // ---------- mock exam questions ----------
-export { SUBJECTS } from '../question-bank.js';
+// Re-exported for the game modules, and imported for this file's own use (openLeaderboard needs
+// it) — a re-export alone doesn't create a local binding.
+import { SUBJECTS } from '../question-bank.js?v=2';
+import { calculatePayslip, calculateSelfAssessment } from '../payslip.js?v=2';
+import { getSalary, saveSalary, getHmrcUser, EMPLOYMENT } from '../player-session.js?v=1';
+export { SUBJECTS };
 
 // ---------- pixel-block sprites ----------
 function buildSprite(w, h, blocks){
@@ -494,6 +499,302 @@ function closeLeaderboard(){
 }
 lbCloseBtnEl.addEventListener('click', closeLeaderboard);
 lbModalEl.addEventListener('pointerdown', e=>{ if(e.target===lbModalEl) closeLeaderboard(); });
+
+// ---------- session salary + payment information ----------
+// A game can award the player a gross annual salary (Football Penalties: £15,000 per goal). The
+// latest award is kept for the browser session by player-session.js:
+//   { grossAnnualSalary, goals, perGoal, source, subject, recordedAt }
+let sessionSalary = null;
+export const formatGBP = (n) => new Intl.NumberFormat('en-GB', { style:'currency', currency:'GBP', maximumFractionDigits:0 }).format(n);
+
+export function saveSessionSalary(record){
+  sessionSalary = record;
+  saveSalary(record);
+}
+export function loadSessionSalary(){
+  return sessionSalary || (sessionSalary = getSalary());
+}
+
+const payModalEl = document.getElementById('payModal');
+const payslipEl = document.getElementById('payslipDoc');
+let payslipActions = {};
+
+const money = (n) => new Intl.NumberFormat('en-GB', { style:'currency', currency:'GBP', minimumFractionDigits:2 }).format(n);
+
+// "See Payment Information". How the reward is paid depends on the employment status given in
+// HMRC Mode's Welcome form — getHmrcUser().employmentStatus from player-session.js (stored under
+// sessionStorage 'examhub:hmrcUser'):
+//   'Self-employed'                      → the Making Tax Digital app (openMtdApp)
+//   'Employed', or no HMRC answers yet   → the PAYE payslip (openPayslip)
+// Both offer PLAY AGAIN (`actions.onPlayAgain` restarts the game) and NEXT (back to HMRC Mode).
+export function openPaymentInfo(record, actions = {}){
+  record = record || loadSessionSalary();
+  if(!record) return;
+  const user = getHmrcUser();
+  if(user && user.employmentStatus === EMPLOYMENT.SELF_EMPLOYED) openMtdApp(record, user, actions);
+  else openPayslip(record, actions);
+}
+
+const goToHmrcMode = (record) => {
+  // Back to the fairground with the same subject; the salary travels in sessionStorage.
+  window.location.href = './hmrc-mode.html?subject=' + encodeURIComponent(record.subject || G.currentSubject);
+};
+
+// The reward as a paper-style UK payslip (light document look on purpose, in contrast to the
+// game's neon HUD). Figures come from calculatePayslip() in payslip.js — illustrative only.
+function openPayslip(record, actions){
+  payslipActions = actions;
+  const slip = calculatePayslip(record.grossAnnualSalary);
+  const when = new Date(record.recordedAt);
+  const payDate = when.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+  // A stable-looking placeholder reference, derived from when the game finished.
+  const employeeRef = 'EH-' + String(when.getTime() % 1000000).padStart(6, '0');
+  const deductions = [
+    ['Income Tax', slip.tax.total],
+    ['National Insurance', slip.nationalInsurance.total],
+  ];
+  if(slip.studentLoan.amount > 0) deductions.push(['Student Loan (Plan 2)', slip.studentLoan.amount]);
+  const deductionRows = deductions.map(([name, amount]) =>
+    `<tr><td>${name}</td><td class="num">${money(amount)}</td></tr>`).join('');
+
+  payslipEl.innerHTML = `
+    <header class="ps-head">
+      <div>
+        <div class="ps-company">EXAM HUB FC LTD</div>
+        <div class="ps-company-sub">Football Penalties Division · Revision Stadium</div>
+      </div>
+      <div class="ps-doc">
+        <div class="ps-doc-title" id="payslipTitle">PAYSLIP</div>
+        <div class="ps-doc-sub">Tax year 2024/25</div>
+      </div>
+    </header>
+    <dl class="ps-meta">
+      <div><dt>Employee</dt><dd>Player</dd></div>
+      <div><dt>Employee ref</dt><dd>${employeeRef}</dd></div>
+      <div><dt>Pay period</dt><dd>Annual</dd></div>
+      <div><dt>Pay date</dt><dd>${payDate}</dd></div>
+      <div><dt>Tax code</dt><dd>1257L</dd></div>
+      <div><dt>NI number</dt><dd>QQ 12 34 56 C <span class="ps-note">(example)</span></dd></div>
+    </dl>
+    <div class="ps-tables">
+      <table class="ps-table">
+        <caption>Payments</caption>
+        <thead><tr><th>Description</th><th class="num">Units</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+        <tbody><tr><td>Goal bonus</td><td class="num">${record.goals}</td><td class="num">${money(record.perGoal)}</td><td class="num">${money(slip.gross)}</td></tr></tbody>
+        <tfoot><tr><th colspan="3">Total payments</th><td class="num">${money(slip.gross)}</td></tr></tfoot>
+      </table>
+      <table class="ps-table">
+        <caption>Deductions</caption>
+        <thead><tr><th>Description</th><th class="num">Amount</th></tr></thead>
+        <tbody>${deductionRows}</tbody>
+        <tfoot><tr><th>Total deductions</th><td class="num">${money(slip.totalDeductions)}</td></tr></tfoot>
+      </table>
+    </div>
+    <div class="ps-net">
+      <span class="ps-net-label">NET PAY</span>
+      <span class="ps-net-amount">${money(slip.net)}</span>
+      <span class="ps-net-month">${money(slip.monthly.net)} per month</span>
+    </div>
+    <p class="ps-disclaimer">Illustrative figures for game purposes only, using simplified 2024/25 rates — not an HMRC calculation.</p>
+    <div class="ps-actions">
+      <button type="button" class="ps-btn ps-btn-secondary" id="payAgainBtn">PLAY AGAIN</button>
+      <button type="button" class="ps-btn" id="payNextBtn">NEXT →</button>
+    </div>`;
+  payslipEl.querySelector('#payAgainBtn').addEventListener('click', ()=>{
+    closePaymentInfo();
+    if(payslipActions.onPlayAgain) payslipActions.onPlayAgain();
+  });
+  payslipEl.querySelector('#payNextBtn').addEventListener('click', ()=>goToHmrcMode(record));
+  modalOpen = true;
+  payModalEl.style.display = 'flex';
+  payslipEl.scrollTop = 0;
+  setTimeout(()=>payslipEl.querySelector('#payNextBtn').focus(), 30);
+}
+function closePaymentInfo(){
+  payModalEl.style.display = 'none';
+  modalOpen = false;
+}
+payModalEl.addEventListener('pointerdown', e=>{ if(e.target===payModalEl) closePaymentInfo(); });
+payModalEl.addEventListener('keydown', e=>{ if(e.key==='Escape'){ e.preventDefault(); closePaymentInfo(); } });
+
+// ---------- Making Tax Digital app (self-employed players) ----------
+// A full-screen, phone-style simulation of HMRC's Making Tax Digital app, shown instead of the
+// payslip when the player said they're self-employed. Two views:
+//   1. a form — Income (pre-filled with the shootout reward, editable) and Expenses, numbers only;
+//      "Send payment to HMRC" stays disabled until both are valid
+//   2. a confirmation — the payment sent, worked out by calculateSelfAssessment() in payslip.js on
+//      profit = income − expenses
+//   3. a "Congrats champ!" page, reached with NEXT from the confirmation
+// The bottom bar's PLAY AGAIN restarts the game from any page; NEXT moves confirmation → congrats,
+// and otherwise (form, congrats) goes back to HMRC Mode.
+// A game simulation — not the real HMRC app, and the figures are illustrative.
+const mtdModalEl = document.getElementById('mtdModal');
+const mtdScreenEl = document.getElementById('mtdScreen');
+const mtdGreetingEl = document.getElementById('mtdGreeting');
+const mtdClockEl = document.getElementById('mtdClock');
+let mtdPage = 'form'; // 'form' | 'sent' | 'congrats' — which page the phone is showing
+
+// Keeps only a plain amount: digits and one decimal point with up to 2 decimals (no minus signs,
+// letters, commas or symbols). Returns the cleaned text.
+function cleanAmount(text){
+  let out = text.replace(/[^\d.]/g, '');
+  const dot = out.indexOf('.');
+  if(dot !== -1) out = out.slice(0, dot + 1) + out.slice(dot + 1).replace(/\./g, '').slice(0, 2);
+  return out.slice(0, 12);
+}
+const amountValue = (text) => (text === '' || text === '.' ? null : Number(text));
+
+function openMtdApp(record, user, actions){
+  mtdGreetingEl.textContent = 'Hello, ' + user.name;
+  mtdClockEl.textContent = new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+  mtdModalEl.querySelector('#mtdAgainBtn').onclick = ()=>{ closeMtdApp(); if(actions.onPlayAgain) actions.onPlayAgain(); };
+  mtdModalEl.querySelector('#mtdNextBtn').onclick = ()=>{
+    if(mtdPage === 'sent') showMtdCongrats();
+    else goToHmrcMode(record);
+  };
+  showMtdForm(record);
+  modalOpen = true;
+  mtdModalEl.style.display = 'flex';
+  setTimeout(()=>mtdScreenEl.querySelector('#mtdExpenses').focus(), 30);
+}
+
+function showMtdForm(record){
+  mtdPage = 'form';
+  mtdScreenEl.innerHTML = `
+    <form class="mtd-card mtd-form" id="mtdForm" novalidate>
+      <div>
+        <h3>Report your self-employment income</h3>
+        <p class="mtd-intro">Tax year 2024/25 · Football Penalties. Enter your figures, then send your payment.</p>
+      </div>
+      <div class="mtd-field">
+        <label for="mtdIncome">Income</label>
+        <span class="mtd-hint" id="mtdIncomeHint">What you earned this year. Your shootout earnings: ${record.goals} goal${record.goals === 1 ? '' : 's'} × ${money(record.perGoal)} = ${money(record.grossAnnualSalary)}.</span>
+        <div class="mtd-input-wrap"><span class="mtd-currency" aria-hidden="true">£</span>
+          <input class="mtd-input" id="mtdIncome" name="income" type="text" inputmode="decimal" autocomplete="off" aria-describedby="mtdIncomeHint mtdIncomeError" value="${record.grossAnnualSalary}"></div>
+        <span class="mtd-error" id="mtdIncomeError" aria-live="polite"></span>
+      </div>
+      <div class="mtd-field">
+        <label for="mtdExpenses">Expenses</label>
+        <span class="mtd-hint" id="mtdExpensesHint">Allowable business costs, e.g. boots and travel to matches. Enter 0 if you had none.</span>
+        <div class="mtd-input-wrap"><span class="mtd-currency" aria-hidden="true">£</span>
+          <input class="mtd-input" id="mtdExpenses" name="expenses" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" aria-describedby="mtdExpensesHint mtdExpensesError"></div>
+        <span class="mtd-error" id="mtdExpensesError" aria-live="polite"></span>
+      </div>
+      <div class="mtd-summary"><span>Taxable profit</span><span id="mtdProfit">—</span></div>
+      <button type="submit" class="mtd-send" id="mtdSend" disabled>Send payment to HMRC</button>
+    </form>
+    <p class="mtd-disclaimer">Simulated for game purposes — not the real HMRC app. Illustrative 2024/25 figures, not an HMRC calculation. UTR 12345 67890 is an example.</p>`;
+  mtdScreenEl.scrollTop = 0;
+
+  const form = mtdScreenEl.querySelector('#mtdForm');
+  // Each field has two independent messages: `chars` (brief — something other than a number was
+  // typed and removed) and `rule` (the value itself isn't acceptable). The current one is shown.
+  const fields = ['Income', 'Expenses'].map(name => ({
+    input: form.querySelector('#mtd' + name),
+    error: form.querySelector('#mtd' + name + 'Error'),
+    chars: '',
+    rule: '',
+    timer: null,
+  }));
+  const showMessage = (field) => {
+    field.error.textContent = field.chars || field.rule;
+    field.input.parentElement.classList.toggle('invalid', !!field.rule);
+  };
+  const [income, expenses] = fields;
+  const sendBtn = form.querySelector('#mtdSend');
+  const profitEl = form.querySelector('#mtdProfit');
+
+  const validate = () => {
+    const inc = amountValue(income.input.value);
+    const exp = amountValue(expenses.input.value);
+    let ok = inc !== null && exp !== null;
+    expenses.rule = '';
+    if(ok && exp > inc){ ok = false; expenses.rule = 'Expenses can’t be more than your income.'; }
+    fields.forEach(showMessage);
+    profitEl.textContent = inc !== null ? money(Math.max(0, inc - (exp || 0))) : '—';
+    sendBtn.disabled = !ok;
+    return ok ? { income: inc, expenses: exp } : null;
+  };
+
+  fields.forEach((field) => {
+    field.input.addEventListener('input', ()=>{
+      const cleaned = cleanAmount(field.input.value);
+      if(cleaned !== field.input.value){
+        // Something other than a plain amount was typed or pasted: drop it and say why, briefly.
+        field.input.value = cleaned;
+        field.chars = 'Numbers only — for example 1250 or 1250.50';
+        clearTimeout(field.timer);
+        field.timer = setTimeout(()=>{ field.chars = ''; showMessage(field); }, 2200);
+      }
+      validate();
+    });
+  });
+
+  form.addEventListener('submit', e=>{
+    e.preventDefault();
+    const values = validate();
+    if(values) showMtdConfirmation(record, values);
+  });
+  validate();
+}
+
+function showMtdConfirmation(record, { income, expenses }){
+  mtdPage = 'sent';
+  const profit = Math.max(0, income - expenses);
+  const sa = calculateSelfAssessment(profit);
+  const reference = 'XM' + String(Date.now()).slice(-10);
+  const row = (label, value, cls = '') => `<div class="mtd-row ${cls}"><span>${label}</span><span>${money(value)}</span></div>`;
+  const taxRows = [
+    row('Income Tax', sa.tax.total),
+    row('Class 4 National Insurance', sa.class4NI.total),
+    `<div class="mtd-row"><span>Class 2 National Insurance<small>Not compulsory from 2024/25</small></span><span>${money(sa.class2NI)}</span></div>`,
+  ];
+  if(sa.studentLoan.amount > 0) taxRows.push(row('Student Loan (Plan 2)', sa.studentLoan.amount));
+  mtdScreenEl.innerHTML = `
+    <section class="mtd-card mtd-success" role="status">
+      <span class="mtd-success-icon" aria-hidden="true">✓</span>
+      <div><strong>Payment sent to HMRC</strong><span>${money(sa.totalTax)} for tax year 2024/25 · Reference ${reference}</span></div>
+    </section>
+    <section class="mtd-card">
+      <h3>Self-employment</h3>
+      <p class="mtd-muted">Football Penalties · 2024/25</p>
+      ${row('Income', income)}
+      ${row('Expenses', expenses)}
+      ${row('Taxable profit', profit, 'mtd-row-total')}
+    </section>
+    <section class="mtd-card">
+      <h3>Your tax calculation</h3>
+      ${taxRows.join('')}
+      ${row('Total paid', sa.totalTax, 'mtd-row-total')}
+    </section>
+    <section class="mtd-card mtd-keep">
+      <span>What you keep after tax</span>
+      <strong>${money(sa.net)}</strong>
+    </section>
+    <p class="mtd-disclaimer">Simulated for game purposes — no real payment has been made. Illustrative 2024/25 figures, not an HMRC calculation.</p>`;
+  mtdScreenEl.scrollTop = 0;
+  mtdModalEl.querySelector('#mtdNextBtn').focus();
+}
+// The page after the payment confirmation: a success message, then NEXT back to HMRC Mode.
+function showMtdCongrats(){
+  mtdPage = 'congrats';
+  mtdScreenEl.innerHTML = `
+    <section class="mtd-card mtd-congrats" role="status">
+      <div class="mtd-congrats-icon" aria-hidden="true">
+        <svg viewBox="0 0 52 52" width="46" height="46"><path d="M14 27 l8 8 l16 -18" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h2 class="mtd-congrats-title">Congrats champ!</h2>
+      <p class="mtd-congrats-text">Your tax has been successfully updated</p>
+    </section>`;
+  mtdScreenEl.scrollTop = 0;
+  mtdModalEl.querySelector('#mtdNextBtn').focus();
+}
+
+function closeMtdApp(){
+  mtdModalEl.style.display = 'none';
+  modalOpen = false;
+}
+mtdModalEl.addEventListener('keydown', e=>{ if(e.key==='Escape'){ e.preventDefault(); closeMtdApp(); } });
 
 // ---------- entity spawns (shared particle/popup system, reused by every game mode) ----------
 export function spawnExplosionInto(list,x,y,color,count,speed){

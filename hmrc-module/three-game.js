@@ -3,12 +3,22 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
 const WORLD_HALF_WIDTH = 17;
 const WORLD_HALF_DEPTH = 13;
 
+// How close (in world units, measured on the floor from a stall's centre) the player must be for
+// the stall's "Press ENTER to interact" prompt. A stall's platform is 3.4 wide by 2.9 deep, so
+// 3.6 reaches about 2 units beyond its front edge (roughly two body-widths of the player, who is
+// ~0.9 wide) and about 1.9 beyond its sides — close enough to feel like walking up to the
+// counter, without needing to stand on an exact spot. Stalls are at least 10 units apart, so two
+// stalls' zones never overlap, and the spawn point (0, 0) is well outside all of them.
+const STALL_INTERACT_RADIUS = 3.6;
+
 const KEY_BINDINGS = new Set([
   'KeyW', 'KeyA', 'KeyS', 'KeyD',
   'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight',
 ]);
 
-export function createHMRCGame(rootElement) {
+// onNearbyStallChange(stall | null) is called whenever the player walks into or out of a stall's
+// interaction range; `stall` is that stall's entry from stallDefs (banner, text, position...).
+export function createHMRCGame(rootElement, { onNearbyStallChange = () => {} } = {}) {
   if (!rootElement) {
     return null;
   }
@@ -564,8 +574,18 @@ export function createHMRCGame(rootElement) {
     right: false,
   };
 
+  // While a popup (the stall's job picker) is open, the player can't move.
+  let inputLocked = false;
+  const setInputLocked = (locked) => {
+    inputLocked = locked;
+    if (locked) {
+      // Drop any keys held when the popup opened, so the player doesn't keep walking.
+      moveState.forward = moveState.back = moveState.left = moveState.right = false;
+    }
+  };
+
   const handleKey = (event, pressed) => {
-    if (!KEY_BINDINGS.has(event.code)) {
+    if (!KEY_BINDINGS.has(event.code) || inputLocked) {
       return;
     }
 
@@ -671,6 +691,25 @@ export function createHMRCGame(rootElement) {
     if (playerParts.rightLegLower) playerParts.rightLegLower.rotation.x = gait * 0.9;
   };
 
+  // Proximity to the stalls: the nearest stall within STALL_INTERACT_RADIUS of the player, checked
+  // every frame on the floor plane (x/z), reported only when it changes.
+  let nearbyStall = null;
+  const updateNearbyStall = () => {
+    let nearest = null;
+    let nearestDistance = STALL_INTERACT_RADIUS;
+    for (const def of stallDefs) {
+      const distance = Math.hypot(playerGroup.position.x - def.x, playerGroup.position.z - def.z);
+      if (distance <= nearestDistance) {
+        nearest = def;
+        nearestDistance = distance;
+      }
+    }
+    if (nearest !== nearbyStall) {
+      nearbyStall = nearest;
+      onNearbyStallChange(nearbyStall);
+    }
+  };
+
   const updateCamera = (delta) => {
     const desiredOffset = new THREE.Vector3(0, 5.0, -8.2);
     desiredOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), playerGroup.rotation.y);
@@ -681,9 +720,24 @@ export function createHMRCGame(rootElement) {
     camera.lookAt(lookTarget);
   };
 
+  // Puts the player just outside a stall's interaction range, on the side towards the middle of the
+  // hall — as if they'd just stepped away from it — turned to face the stall, so the chase camera
+  // (which sits behind the player) is out in the open hall rather than inside the stall. Used when
+  // coming back from a game picked at that stall. The camera jumps straight into place (no swoop).
+  const placePlayerAwayFromStall = (stall, distance = STALL_INTERACT_RADIUS + 1) => {
+    const toCentre = new THREE.Vector2(-stall.x, -stall.z).normalize();
+    const x = THREE.MathUtils.clamp(stall.x + toCentre.x * distance, -WORLD_HALF_WIDTH + 1.2, WORLD_HALF_WIDTH - 1.2);
+    const z = THREE.MathUtils.clamp(stall.z + toCentre.y * distance, -WORLD_HALF_DEPTH + 1.2, WORLD_HALF_DEPTH - 1.2);
+    playerGroup.position.set(x, 0, z);
+    playerGroup.rotation.y = Math.atan2(-toCentre.x, -toCentre.y);
+    updateCamera(1000); // a huge delta makes the camera's smoothing land immediately
+    updateNearbyStall();
+  };
+
   const tick = () => {
     const delta = Math.min(clock.getDelta(), 0.05);
     updatePlayer(delta);
+    updateNearbyStall();
     updateCamera(delta);
     renderer.render(scene, camera);
     requestAnimationFrame(tick);
@@ -697,6 +751,11 @@ export function createHMRCGame(rootElement) {
     renderer,
     player: playerGroup,
     clock,
+    stalls: stallDefs,
+    setInputLocked,
+    placePlayerAwayFromStall,
+    get nearbyStall() { return nearbyStall; },
+    get inputLocked() { return inputLocked; },
   };
 
   window.__hmrcGame = publicApi;

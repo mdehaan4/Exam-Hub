@@ -5,8 +5,9 @@
 //   games/{CODE}: {
 //     players:   { w: id, b?: id },              the creator plays White; the joiner takes Black
 //     moves:     { 0: { from: 'e2', to: 'e4' },   even indexes are White's, odd are Black's
-//                  1: { from: 'e7', to: 'e5' },
+//                  1: { pass: true },              a turn lost to a wrong answer (question gate)
 //                  ... promotion?: 'Q' | 'R' | 'B' | 'N' },
+//     subject:   'gitlab',                         question-bank subject both players answer from
 //     createdAt: ms timestamp,
 //   }
 // Every client rebuilds the game by replaying the log with the chess engine, so the position can't
@@ -21,7 +22,7 @@
 // browser console. Chess legality is enforced by the replay: an illegal move in the log is
 // rejected by every client (it shows as an error and the game can't continue).
 
-import { replayMoves, playMove } from './game.js?v=3';
+import { replayMoves, playMove } from './game.js?v=4';
 
 export const ROOMS_PATH = 'games';
 // No 0/O or 1/I, so codes survive being read out loud or retyped.
@@ -41,7 +42,10 @@ export function normalizeRoomCode(input) {
   return new RegExp(`^[${CODE_CHARS}]{${CODE_LENGTH}}$`).test(code) ? code : null;
 }
 
-const moveRecord = ({ from, to, promotion }) => (promotion ? { from, to, promotion } : { from, to });
+const moveRecord = ({ from, to, promotion, pass }) => {
+  if (pass) return { pass: true };
+  return promotion ? { from, to, promotion } : { from, to };
+};
 
 // The room's moves in order. The log may come back as an array, as an object keyed '0', '1', ...
 // or be missing entirely (the Realtime Database drops empty lists). A log with a gap — an array
@@ -60,8 +64,8 @@ export function gameFromRoom(room) {
   return replayMoves(moveLog(room.moves));
 }
 
-export async function createRoom(backend) {
-  const room = { players: { w: backend.playerId }, createdAt: Date.now() };
+export async function createRoom(backend, subject) {
+  const room = { players: { w: backend.playerId }, subject, createdAt: Date.now() };
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = makeRoomCode();
     // Only claim the code if nobody has it; a clash just tries another code.
@@ -85,7 +89,8 @@ export async function joinRoom(backend, code) {
   return { code, color: 'b' };
 }
 
-// Plays `input` ({ from, to, promotion? }) as `color` by appending it to the room's move log.
+// Plays `input` ({ from, to, promotion? } or { pass: true }) as `color` by appending it to the
+// room's move log.
 // Checked against the room's current log first: throws if the opponent hasn't joined, it isn't
 // this player's turn, the game is over, or the move is illegal. The write is a transaction that
 // only fills the next index if it's still empty, so a move can't land on top of another one.
@@ -104,7 +109,7 @@ export async function submitMove(backend, code, color, input) {
   if (!committed) throw new Error('The game changed before your move was saved. Please try again.');
 }
 
-// Calls onUpdate({ game, players }) with the rebuilt game on every change to the room, and
+// Calls onUpdate({ game, players, subject }) with the rebuilt game on every change to the room, and
 // onError(error) if the room disappears or its log contains an illegal move. Returns an
 // unsubscribe function.
 export function watchRoom(backend, code, onUpdate, onError) {
@@ -116,6 +121,6 @@ export function watchRoom(backend, code, onUpdate, onError) {
     } catch (err) {
       return onError(new Error(`This game contains an invalid move and can't continue (${err.message}).`));
     }
-    onUpdate({ game, players: room.players || {} });
+    onUpdate({ game, players: room.players || {}, subject: room.subject || null });
   }, onError);
 }

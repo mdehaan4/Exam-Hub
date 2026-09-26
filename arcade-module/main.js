@@ -1,65 +1,54 @@
 // Entry point: wires up the hub screen and boots the game loop.
+//
+// Cache-busting: every import between the arcade-module files carries the same ?v=N as this file's
+// <script> tag in index.html. When any of these files changes, bump N in all of them together
+// (they must match exactly — a file imported under two different URLs would load twice, with two
+// separate copies of its state).
 
-import { ensureAudio, resizeCanvas } from './shared.js';
-import { frame, showScreen, startArcade } from './arcade.js';
-import { startForestMode } from './forest.js';
-import { startExam } from './exam.js';
-import { startPenalty, resizePenaltyCanvas } from './penalty.js';
-import { startPacman, resizePacCanvas } from './pacman.js';
-import { RACE_LINK_MARKER, raceExtractCode, raceStartJoin, raceSupported, startRace } from './race.js';
-import { selSubject } from './shared.js';
+import { ensureAudio, resizeCanvas } from './shared.js?v=15';
+import { frame, showScreen, startArcade } from './arcade.js?v=15';
+import { startForestMode } from './forest.js?v=15';
+import { startExam } from './exam.js?v=15';
+import { startPenalty, resizePenaltyCanvas } from './penalty.js?v=15';
+import { startPacman, resizePacCanvas } from './pacman.js?v=15';
+import { RACE_LINK_MARKER, raceExtractCode, raceStartJoin, raceSupported, startRace } from './race.js?v=15';
+import { selSubject, SUBJECTS } from './shared.js?v=15';
+import { GAMES, findGame, createGameTile } from '../game-list.js?v=1';
 
 window.addEventListener('resize', () => { resizeCanvas(); resizePenaltyCanvas(); resizePacCanvas(); });
 
 // ---------- hub ----------
-const selMode = document.getElementById('selMode');
-const hubPanelEl = document.querySelector('.hub-panel');
-const hubDescEl = document.getElementById('hubDesc');
-const HUB_DESCRIPTIONS = {
-  arcade: 'Space Invaders style: fly through 10 questions sampled at random. Shoot the ship carrying the correct answer — wrong guesses are shown, but nothing is lost. Correct answers upgrade your weapon.',
-  exam: 'All 20 questions, one at a time, with the correct answer and an explanation shown after each. Finishes with a pass/fail score and a topic-by-topic breakdown.',
-  penalty: 'Football penalty shootout style: a best-of-5 shootout sampled at random. Pick the goal zone showing the correct answer to score — pick wrong and the keeper saves it. Nothing is lost either way.',
-  pacman: 'Pac-Man style: navigate a maze through 10 questions sampled at random. Eat the answer node with the correct text — wrong guesses are shown, but nothing is lost. Dodge the ghosts along the way.',
-  forest: 'A Pokémon-inspired city walk: explore a street scene with shops and buildings, walk down the road, and chat with computer-controlled walkers while collecting the feeling of a starter RPG.',
-  'racing-demo': 'Launch the standalone browser racing game with a chase camera, drifting car handling, and modern 3D visuals.',
-  hmrc: 'A top-down, Pokémon-style walkabout: explore an indoor fairground hall on foot with WASD or the arrow keys. (Early build — just the hall and movement for now.)',
-  'tax-battle': 'A Pokémon-inspired quiz battle: a trainer explores encounters, answers tax and tech questions, and wins badges by picking the correct answer in a turn-based fight.',
-  chess: 'Classic two-player chess on one screen: drag or click pieces, with full rules — castling, en passant, promotion, check, checkmate and stalemate. No quiz questions, just chess.',
-  race: 'Head-to-head against a friend on the same 10 questions in real time — one of you hosts, the other joins, by swapping two links. No account needed. Works only on the GitHub Pages version of this app, not this preview.',
-};
-function updateHubDesc(){
-  hubDescEl.textContent = HUB_DESCRIPTIONS[selMode.value];
-  hubPanelEl.classList.toggle('racing-demo', selMode.value === 'racing-demo');
-}
-selMode.addEventListener('change', updateHubDesc);
-updateHubDesc();
-
-document.getElementById('btnStart').addEventListener('click', ()=>{
+// The subject is picked from the dropdown; games are picked from a grid of picture tiles. The
+// game list and tiles are shared with the HMRC job picker (game-list.js).
+function startMode(mode){
   ensureAudio();
   const subject = selSubject.value;
-  if(selMode.value==='arcade') startArcade(subject);
-  else if(selMode.value==='penalty') startPenalty(subject);
-  else if(selMode.value==='pacman') startPacman(subject);
-  else if(selMode.value==='forest') startForestMode(subject);
-  else if(selMode.value==='racing-demo') {
-    window.location.href = './racing-demo.html?subject=' + encodeURIComponent(subject);
+  const game = findGame(mode);
+  if(game && game.page) {
+    window.location.href = game.page + '?subject=' + encodeURIComponent(subject);
     return;
   }
-  else if(selMode.value==='hmrc') {
-    window.location.href = './hmrc-mode.html?subject=' + encodeURIComponent(subject);
-    return;
-  }
-  else if(selMode.value==='tax-battle') {
-    window.location.href = './tax-battle-mode.html?subject=' + encodeURIComponent(subject);
-    return;
-  }
-  else if(selMode.value==='chess') {
-    window.location.href = './chess.html';
-    return;
-  }
-  else if(selMode.value==='race') startRace(subject);
+  if(mode==='arcade') startArcade(subject);
+  else if(mode==='penalty') startPenalty(subject);
+  else if(mode==='pacman') startPacman(subject);
+  else if(mode==='forest') startForestMode(subject);
+  else if(mode==='race') startRace(subject);
   else startExam(subject);
+}
+
+const gameGridEl = document.getElementById('gameGrid');
+GAMES.forEach((game, i) => {
+  const tile = createGameTile(game, i);
+  tile.setAttribute('role', 'listitem');
+  tile.addEventListener('click', () => startMode(game.id));
+  gameGridEl.appendChild(tile);
 });
+
+// Header counts, from the data so they stay right as subjects and games are added.
+const subjectList = Object.values(SUBJECTS);
+document.getElementById('statSubjects').textContent = `${subjectList.length} Subjects`;
+document.getElementById('statGames').textContent = `${GAMES.length} Games`;
+document.getElementById('statQuestions').textContent = `${subjectList.reduce((n, s) => n + s.questions.length, 0)} Questions`;
 
 const incomingRaceCode = (function(){
   if(!raceSupported() || location.hash.indexOf(RACE_LINK_MARKER)!==0) return null;
@@ -68,7 +57,19 @@ const incomingRaceCode = (function(){
   return code;
 })();
 
-if(incomingRaceCode){
+// Other pages (e.g. the HMRC job picker) launch the games that run inside this page with
+// ?play=<game>&subject=<subject>; start it straight away, then tidy the URL so Back/reload
+// lands on the hub.
+const launchParams = new URLSearchParams(location.search);
+const launchGame = findGame(launchParams.get('play'));
+if(SUBJECTS[launchParams.get('subject')]) selSubject.value = launchParams.get('subject');
+if(launchParams.has('play')){
+  try{ history.replaceState(null, '', location.pathname); }catch(e){}
+}
+
+if(launchGame && !launchGame.page){
+  startMode(launchGame.id);
+} else if(incomingRaceCode){
   raceStartJoin();
   document.getElementById('raceJoinOfferInput').value = incomingRaceCode;
   raceJoinGenerate();

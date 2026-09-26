@@ -8,12 +8,12 @@ import {
   openHighScoreEntry, openLeaderboard, pctOf, qualifiesForLeaderboard, rand, resizeCanvas, saveHighScore,
   screenWrap, sfx, shuffleAnswerOptions, shuffleArray, spawnExplosionInto, spawnPopupInto,
   updateParticleList, updatePopupList, updateStars, G,
-} from './shared.js';
-import { forestScreenEl, renderForest, updateForest } from './forest.js';
-import { stopExamTimer } from './exam.js';
-import { btnPenHint, renderPenalty, updatePenalty } from './penalty.js';
-import { btnPacHint, renderPacman, updatePacman } from './pacman.js';
-import { raceCleanupConnection, raceScreenEl } from './race.js';
+} from './shared.js?v=15';
+import { forestScreenEl, renderForest, updateForest } from './forest.js?v=15';
+import { stopExamTimer } from './exam.js?v=15';
+import { btnPenHint, renderPenalty, updatePenalty } from './penalty.js?v=15';
+import { btnPacHint, renderPacman, updatePacman } from './pacman.js?v=15';
+import { raceCleanupConnection, raceScreenEl } from './race.js?v=15';
 
 // ---------- game state ----------
 let state = 'title'; // title, question, resolve, paused, complete

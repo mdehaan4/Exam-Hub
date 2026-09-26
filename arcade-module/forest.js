@@ -1,7 +1,7 @@
 // Forest adventure mode: overworld exploration + trainer battles.
 
-import { goToHub, showScreen } from './arcade.js';
-import { G } from './shared.js';
+import { goToHub, showScreen } from './arcade.js?v=15';
+import { G } from './shared.js?v=15';
 
 // ---------- forest adventure mode ----------
 export const forestScreenEl = document.getElementById('forestScreen');

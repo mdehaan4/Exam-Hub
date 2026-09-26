@@ -583,6 +583,9 @@
         margin-top: 18px;
       }
 
+      .back-btn { margin-right: auto; }
+      .secondary-btn:hover { border-color: rgba(255,255,255,0.32); }
+
       .primary-btn,
       .secondary-btn {
         border: none;
@@ -641,6 +644,7 @@
               <option value="awsai">AWS AI Practitioner</option>
               <option value="istqb">ISTQB Foundation</option>
               <option value="saasinfra">SaaS Infrastructure</option>
+              <option value="dynatrace">Dynatrace Associate</option>
             </select>
           </div>
 
@@ -746,6 +750,7 @@
           <div id="answerGrid" class="answer-grid"></div>
 
           <div class="battle-actions">
+            <button id="btnLeaveBattle" class="secondary-btn back-btn" type="button" title="Leave the battle (Esc)">← Back to the field</button>
             <button id="btnNextEncounter" class="secondary-btn" type="button">Next encounter</button>
             <button id="btnTryAgain" class="primary-btn" type="button">Battle again</button>
           </div>
@@ -753,7 +758,7 @@
       </main>
     </div>
 
-    <script type="module" src="./tax-battle-module/main.js"></script>
-    <script type="module" src="./tax-battle-module/phaser-route.js"></script>
+    <script type="module" src="./tax-battle-module/main.js?v=2"></script>
+    <script type="module" src="./tax-battle-module/phaser-route.js?v=2"></script>
   </body>
 </html>

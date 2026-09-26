@@ -1,4 +1,11 @@
-import { createHMRCGame } from './three-game.js';
+import { createHMRCGame } from './three-game.js?v=4';
+import { createJobPicker } from './job-picker.js?v=3';
+import { getHmrcUser, saveHmrcUser, getHmrcReturn, saveHmrcReturn } from '../player-session.js?v=1';
+
+// The Welcome answers (incl. employment status) and the stall the player left from are kept for
+// the session in player-session.js, so a player who leaves the fairground for a game picked at a
+// stall — and comes back, e.g. via the payslip's NEXT — returns to free movement instead of
+// starting over. The employment status also decides how Football Penalties pays out.
 
 export const subjectKey = new URLSearchParams(window.location.search).get('subject');
 
@@ -53,7 +60,19 @@ const initGame = () => {
 
   root.classList.add('visible');
   onboardingOverlay.classList.add('hidden');
-  createHMRCGame(root);
+  // The stalls' job picker locks movement while it's open (see job-picker.js / three-game.js).
+  let game = null;
+  const picker = createJobPicker({
+    subject: subjectKey || 'gitlab',
+    onOpenChange: (open) => game?.setInputLocked(open),
+  });
+  game = createHMRCGame(root, { onNearbyStallChange: (stall) => picker.setNearbyStall(stall) });
+  window.__hmrcPicker = picker;
+
+  const returning = getHmrcReturn();
+  saveHmrcReturn(null); // used once
+  const stall = returning && game.stalls.find((s) => s.banner === returning.stall);
+  if (stall) game.placePlayerAwayFromStall(stall);
 };
 
 const handleSubmit = (event) => {
@@ -70,6 +89,7 @@ const handleSubmit = (event) => {
   };
 
   window.hmrcUser = onboardingData;
+  saveHmrcUser(onboardingData);
   initGame();
 };
 
@@ -83,4 +103,19 @@ if (!root || !onboardingOverlay || !onboardingForm) {
 
 if (root) {
   root.classList.remove('visible');
+}
+
+// A returning player (this session) sees the Welcome form again, pre-filled with their saved
+// answers, so they can switch between Employed and Self-employed — which changes how Football
+// Penalties pays them — or just press Continue. If they came back from a game picked at a stall,
+// they're still put back beside it once they continue (initGame).
+const savedUser = getHmrcUser();
+if (savedUser) {
+  nameInput.value = savedUser.name;
+  ageInput.value = savedUser.age;
+  employmentInput.value = savedUser.employmentStatus;
+  onboardingOverlay.querySelector('h2').textContent = 'Welcome back';
+  onboardingOverlay.querySelector('p').textContent = 'Check your details. You can switch between employed and self-employed before you continue.';
+  onboardingForm.querySelector('.submit-btn').textContent = 'Continue';
+  employmentInput.focus();
 }

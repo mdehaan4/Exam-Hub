@@ -1,8 +1,8 @@
 // Online multiplayer race mode: WebRTC-linked head-to-head quiz race.
 
-import { SUBJECTS, pctOf, selSubject, shuffleAnswerOptions, shuffleArray, G } from './shared.js';
-import { QUESTIONS_PER_RUN, goToHub, input, showScreen } from './arcade.js';
-import { formatElapsed } from './exam.js';
+import { SUBJECTS, pctOf, selSubject, shuffleAnswerOptions, shuffleArray, G } from './shared.js?v=15';
+import { QUESTIONS_PER_RUN, goToHub, input, showScreen } from './arcade.js?v=15';
+import { formatElapsed } from './exam.js?v=15';
 
 // ---------- online multiplayer race ----------
 const RACE_ICE_SERVERS = [

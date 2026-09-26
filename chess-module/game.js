@@ -10,8 +10,9 @@
 //     enPassant: 'e3' | null,        // square a pawn may capture onto en passant
 //     halfmoveClock: 0,              // fifty-move rule counter
 //     fullmoveNumber: 1,
-//     moves: [{ from: 'e2', to: 'e4', piece: 'wP', captured?: 'bN', promotion?: 'Q', san: 'e4' }],
-//     status: { state: 'playing' | 'check' | 'checkmate' | 'stalemate' | 'draw',
+//     moves: [{ from: 'e2', to: 'e4', piece: 'wP', captured?: 'bN', promotion?: 'Q', san: 'e4' }
+//             | { pass: true, color: 'w' | 'b', san: '—' }],   // a turn lost to a wrong answer
+//     status: { state: 'playing' | 'check' | 'checkmate' | 'stalemate' | 'draw' | 'forfeit',
 //               winner?: 'w' | 'b', reason?: string },
 //   }
 //
@@ -20,8 +21,8 @@
 // online.js). Optional keys are left out rather than set to undefined.
 
 import {
-  createInitialState, getLegalMoves, applyMove, getGameStatus, toSAN, squareName, FILES,
-} from './engine.js?v=1';
+  createInitialState, getLegalMoves, applyMove, applyPass, getGameStatus, toSAN, squareName, FILES,
+} from './engine.js?v=2';
 
 export const GAME_VERSION = 1;
 
@@ -63,7 +64,7 @@ export function createGame() {
 }
 
 export function isGameOver(game) {
-  return ['checkmate', 'stalemate', 'draw'].includes(game.status.state);
+  return ['checkmate', 'stalemate', 'draw', 'forfeit'].includes(game.status.state);
 }
 
 // Legal moves for the side to move (optionally only from one square, given as a name or [r, c]).
@@ -75,10 +76,12 @@ export function legalMoves(game, from = null) {
 }
 
 // Plays a move given as { from: 'e2', to: 'e4', promotion?: 'Q' } — the shape a remote player
-// would send. The move is checked against the legal-move list, so a record can never be put into
-// an illegal position, however the input arrived. Throws on an illegal move.
+// would send — or { pass: true } for a turn lost to a wrong answer. The move is checked against
+// the legal-move list, so a record can never be put into an illegal position, however the input
+// arrived. Throws on an illegal move.
 export function playMove(game, input) {
   if (isGameOver(game)) throw new Error(`Game is over (${game.status.state})`);
+  if (input.pass) return passTurn(game);
   const state = toEngineState(game);
   const [fr, fc] = parseSquare(input.from);
   const [tr, tc] = parseSquare(input.to);
@@ -91,6 +94,17 @@ export function playMove(game, input) {
   if (move.promotion) record.promotion = move.promotion;
   record.san = toSAN(state, move);
   return fromEngineState(applyMove(state, move), [...game.moves, record]);
+}
+
+// The side to move loses its turn. A player in check can't pass — their king would be left under
+// attack, which chess never allows — so a pass while in check loses the game instead.
+function passTurn(game) {
+  const record = { pass: true, color: game.turn, san: '—' };
+  const next = fromEngineState(applyPass(toEngineState(game)), [...game.moves, record]);
+  if (game.status.state === 'check') {
+    next.status = { state: 'forfeit', winner: next.turn, reason: 'king left in check after a wrong answer' };
+  }
+  return next;
 }
 
 // Rebuilds a game by replaying a move list from the start position. Also the way to verify a

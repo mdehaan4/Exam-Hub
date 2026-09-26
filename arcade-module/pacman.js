@@ -5,8 +5,8 @@ import {
   hexToRgba, loadHighScore, modalOpen, openHighScoreEntry, openLeaderboard, pctOf,
   qualifiesForLeaderboard, roundRect, saveHighScore, sfx, shuffleAnswerOptions, shuffleArray,
   spawnExplosionInto, spawnPopupInto, updateParticleList, updatePopupList, G,
-} from './shared.js';
-import { QUESTIONS_PER_RUN, btnMute, goToHub, showScreen, toggleHint } from './arcade.js';
+} from './shared.js?v=15';
+import { QUESTIONS_PER_RUN, btnMute, goToHub, showScreen, toggleHint } from './arcade.js?v=15';
 
 // ---------- pac-man revision mode ----------
 const PAC_COLS = 13, PAC_ROWS = 11, PAC_CELL = 30;

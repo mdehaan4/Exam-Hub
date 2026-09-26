@@ -20,7 +20,10 @@
         "moves": {
           "$n": {
             ".write": "!data.exists() && newData.exists() && $n.matches(/^[0-9]+$/) && $n.length <= 4 && ($n === '0' || !$n.beginsWith('0')) && root.child('games/' + $code + '/players/b').exists()",
-            ".validate": "newData.hasChildren(['from', 'to'])",
+            ".validate": "(newData.hasChildren(['from', 'to']) && !newData.child('pass').exists()) || (newData.child('pass').exists() && !newData.child('from').exists() && !newData.child('to').exists() && !newData.child('promotion').exists())",
+            "pass": {
+              ".validate": "newData.val() === true"
+            },
             "from": {
               ".validate": "newData.isString() && newData.val().matches(/^[a-h][1-8]$/)"
             },
@@ -34,6 +37,9 @@
               ".validate": false
             }
           }
+        },
+        "subject": {
+          ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9]+$/) && newData.val().length <= 32"
         },
         "createdAt": {
           ".validate": "newData.isNumber()"

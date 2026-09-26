@@ -234,6 +234,18 @@ export function applyMove(state, move) {
   return next;
 }
 
+// The side to move gives up its turn without moving (used by the question gate: a wrong answer
+// forfeits the move). Nothing on the board changes; an en passant chance expires, as it would
+// after any move. The caller decides what a pass while in check means — see game.js.
+export function applyPass(state) {
+  const next = cloneState(state);
+  next.enPassant = null;
+  next.halfmoveClock = state.halfmoveClock + 1;
+  if (state.turn === 'b') next.fullmoveNumber += 1;
+  next.turn = opponent(state.turn);
+  return next;
+}
+
 // All legal moves for the side to move, or only those from one square if `from` is given.
 export function getLegalMoves(state, from = null) {
   const squares = [];

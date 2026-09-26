@@ -1,4 +1,8 @@
 <meta charset="utf-8"><title>Exam Hub — Arcade & Exam Revision</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&display=swap">
+<link rel="stylesheet" href="./game-tiles.css?v=1">
 <style>
   :root{
     --void:#05060d;
@@ -31,6 +35,7 @@
     --biz-amber-bg:#fef3c7;
     --biz-page-1:#0070AD;
     --biz-page-2:#004d78;
+    --font-display: "Orbitron", "Segoe UI", system-ui, sans-serif; /* hub headings and game titles */
     --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
   *{ box-sizing:border-box; }
@@ -44,6 +49,10 @@
     background:
       radial-gradient(70% 50% at 50% 0%, rgba(18,171,219,.35), transparent 60%),
       linear-gradient(160deg, var(--biz-page-1), var(--biz-page-2));
+    /* The hub is taller than the window now; pin the gradient to the viewport so it doesn't restart
+       partway down the page (where fixed isn't supported, the colour fills in below it). */
+    background-attachment:fixed;
+    background-color:var(--biz-page-2);
     color:var(--biz-ink);
     font-family:var(--font-sans);
     padding:20px 12px 28px;
@@ -438,6 +447,227 @@
   .lb-rank{ width:22px; color:var(--violet); font-weight:800; }
   .lb-name{ flex:1; color:var(--ink); font-weight:700; letter-spacing:.05em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .lb-score{ color:var(--amber); font-weight:800; font-variant-numeric:tabular-nums; }
+  /* Football Penalties end screen: payment information */
+  .pay-btn{
+    position:absolute; left:50%; top:77%; transform:translateX(-50%); z-index:5;
+    font-family:var(--font-mono);
+    font-size:12px; letter-spacing:.12em; font-weight:800; text-transform:uppercase;
+    color:#1b1405;
+    background:linear-gradient(135deg, #ffd166, var(--amber));
+    border:none; border-radius:8px;
+    padding:10px 16px;
+    cursor:pointer;
+    box-shadow:0 0 18px rgba(255,184,77,.45), 0 4px 14px rgba(0,0,0,.5);
+  }
+  .pay-btn:hover{ filter:brightness(1.08); }
+  .pay-btn:focus-visible{ outline:2px solid #fff; outline-offset:3px; }
+  .pay-btn[hidden]{ display:none; }
+  /* The secondary button's light-page colours are unreadable in these dark popups (leaderboard, payment). */
+  .hs-box .hub-start-secondary{ color:var(--ink); border-color:rgba(238,241,250,.35); }
+  .hs-box .hub-start-secondary:hover{ background:rgba(255,255,255,.08); }
+  /* Payslip: deliberately a light "paper" document, not the neon HUD, so it reads as a real payslip. */
+  .payslip{
+    width:min(720px, 100%);
+    max-height:calc(100vh - 40px);
+    overflow-y:auto;
+    box-sizing:border-box;
+    padding:28px 30px 24px;
+    background:#fbfaf6;
+    color:#111;
+    border:1px solid #d8d4c8;
+    border-radius:4px;
+    box-shadow:0 30px 80px rgba(0,0,0,.6), 0 2px 0 #e9e5d9;
+    font-family:"Helvetica Neue", Arial, sans-serif;
+    font-size:13px;
+    line-height:1.4;
+    user-select:text;
+  }
+  .payslip:focus{ outline:none; }
+  .ps-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; padding-bottom:12px; border-bottom:2px solid #111; }
+  .ps-company{ font-size:18px; font-weight:800; letter-spacing:.06em; }
+  .ps-company-sub{ font-size:11px; color:#555; margin-top:2px; }
+  .ps-doc{ text-align:right; }
+  .ps-doc-title{ font-size:20px; font-weight:800; letter-spacing:.2em; }
+  .ps-doc-sub{ font-size:11px; color:#555; }
+  .ps-meta{ margin:14px 0 16px; display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px 18px; }
+  .ps-meta div{ border-bottom:1px solid #d6d2c6; padding-bottom:4px; }
+  .ps-meta dt{ font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:#666; }
+  .ps-meta dd{ margin:1px 0 0; font-family:"Courier New", ui-monospace, monospace; font-weight:700; font-size:13px; }
+  .ps-note{ font-family:"Helvetica Neue", Arial, sans-serif; font-weight:400; font-size:10px; color:#777; }
+  .ps-tables{ display:grid; grid-template-columns:minmax(0, 1.25fr) minmax(0, 1fr); gap:16px; align-items:start; }
+  /* index.html renders in quirks mode (no doctype), where tables don't inherit font size or colour
+     from the payslip — so both are set on the table itself. */
+  .ps-table{ width:100%; border-collapse:collapse; border:1px solid #9a968c; font-size:13px; color:#111; }
+  .ps-table caption{ text-align:left; font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; padding:0 0 5px; }
+  .ps-table th, .ps-table td{ border:1px solid #c9c5ba; padding:6px 8px; text-align:left; }
+  .ps-table thead th{ background:#ecE9df; font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:#333; }
+  .ps-table tfoot th, .ps-table tfoot td{ border-top:2px solid #111; font-weight:800; }
+  .ps-table .num{ text-align:right; font-family:"Courier New", ui-monospace, monospace; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .ps-net{
+    margin-top:18px; padding:14px 16px;
+    display:grid; grid-template-columns:1fr auto; align-items:baseline; gap:2px 16px;
+    border-top:3px double #111; border-bottom:3px double #111;
+    background:#f1eee4;
+  }
+  .ps-net-label{ font-size:14px; font-weight:800; letter-spacing:.18em; }
+  .ps-net-amount{ font-family:"Courier New", ui-monospace, monospace; font-size:30px; font-weight:800; text-align:right; }
+  .ps-net-month{ grid-column:2; text-align:right; font-size:11px; color:#555; }
+  .ps-disclaimer{ margin:12px 0 0; font-size:10.5px; color:#666; font-style:italic; }
+  .ps-actions{ margin-top:18px; display:flex; justify-content:flex-end; gap:10px; }
+  .ps-btn{
+    min-width:130px; padding:11px 18px;
+    border:2px solid #111; border-radius:4px;
+    background:#111; color:#fbfaf6;
+    font:800 13px/1 "Helvetica Neue", Arial, sans-serif; letter-spacing:.14em;
+    cursor:pointer;
+  }
+  .ps-btn:hover{ background:#2b2b2b; }
+  .ps-btn:focus-visible{ outline:3px solid #2a6fdb; outline-offset:2px; }
+  .ps-btn-secondary{ background:transparent; color:#111; }
+  .ps-btn-secondary:hover{ background:#ecE9df; }
+  @media (max-width:600px){
+    .payslip{ padding:20px 16px 18px; }
+    .ps-meta{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    .ps-tables{ grid-template-columns:1fr; }
+    .ps-table{ font-size:12px; }
+    .ps-table th, .ps-table td{ padding:5px 6px; }
+    .ps-net-amount{ font-size:24px; }
+    .ps-actions{ flex-direction:column-reverse; }
+    .ps-btn{ width:100%; }
+  }
+  /* Making Tax Digital app simulation (self-employed players) */
+  .mtd-overlay{
+    position:fixed; inset:0; z-index:210;
+    display:flex; align-items:center; justify-content:center;
+    padding:16px;
+    background:radial-gradient(80% 60% at 50% 40%, rgba(16,40,77,.85), rgba(2,4,12,.96));
+    backdrop-filter:blur(6px);
+  }
+  .mtd-phone{
+    position:relative;
+    width:min(390px, 100%);
+    height:min(820px, calc(100vh - 32px));
+    display:flex; flex-direction:column;
+    border:10px solid #0d0f14;
+    border-radius:46px;
+    overflow:hidden;
+    background:#eef1f5;
+    color:#14181f;
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    box-shadow:0 30px 80px rgba(0,0,0,.65), 0 0 0 2px #2a2f3a;
+    user-select:text;
+  }
+  .mtd-statusbar{
+    flex:0 0 auto; position:relative;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 26px 6px;
+    background:#10284d; color:#fff;
+    font-size:12px; font-weight:700;
+  }
+  .mtd-notch{ position:absolute; left:50%; top:6px; transform:translateX(-50%); width:110px; height:24px; border-radius:14px; background:#0d0f14; }
+  .mtd-appbar{ flex:0 0 auto; padding:10px 18px 16px; background:#10284d; color:#fff; }
+  .mtd-brand{ display:flex; align-items:center; gap:10px; }
+  .mtd-logo{
+    display:grid; place-items:center; width:36px; height:36px; border-radius:10px;
+    background:#00a19a; color:#fff; font-size:11px; font-weight:900; letter-spacing:.04em;
+  }
+  .mtd-title{ font-size:16px; font-weight:800; }
+  .mtd-sub{ font-size:11px; opacity:.75; }
+  .mtd-greeting{ margin-top:14px; font-size:20px; font-weight:800; }
+  .mtd-utr{ margin-top:2px; font-size:12px; opacity:.8; }
+  .mtd-screen{ flex:1 1 auto; overflow-y:auto; padding:14px 14px 18px; display:flex; flex-direction:column; gap:12px; }
+  .mtd-card{
+    background:#fff; border-radius:16px; padding:14px 16px;
+    box-shadow:0 1px 2px rgba(16,24,40,.06), 0 4px 12px rgba(16,24,40,.06);
+  }
+  .mtd-card h3{ margin:0 0 4px; font-size:15px; font-weight:800; }
+  .mtd-muted{ margin:0 0 8px; font-size:12px; color:#5b6472; }
+  .mtd-due{ background:linear-gradient(135deg, #00a19a, #007a74); color:#fff; }
+  .mtd-due-label{ font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; opacity:.9; }
+  .mtd-due-amount{ margin-top:4px; font-size:32px; font-weight:900; font-variant-numeric:tabular-nums; }
+  .mtd-due-date{ margin-top:2px; font-size:12.5px; opacity:.95; }
+  .mtd-row{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:9px 0; border-top:1px solid #e6e9ef; font-size:13.5px; }
+  .mtd-row:first-of-type{ border-top:none; }
+  .mtd-row span:last-child{ font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .mtd-row small{ display:block; margin-top:1px; font-size:11px; color:#6b7482; font-weight:400; }
+  .mtd-row-total{ border-top:2px solid #14181f; font-weight:800; }
+  .mtd-quarters{ list-style:none; margin:6px 0 0; padding:0; }
+  .mtd-quarters li{ display:flex; justify-content:space-between; gap:10px; padding:9px 0; border-top:1px solid #e6e9ef; font-size:13px; }
+  .mtd-quarters li:first-child{ border-top:none; }
+  .mtd-quarters li div{ display:flex; flex-direction:column; }
+  .mtd-quarters li div:last-child{ align-items:flex-end; font-variant-numeric:tabular-nums; font-weight:700; }
+  .mtd-quarters li div:first-child span{ color:#5b6472; font-size:12px; }
+  .mtd-sent{ font-style:normal; font-size:11px; font-weight:700; color:#0b7a4b; }
+  .mtd-keep{ display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:14px; font-weight:700; }
+  .mtd-keep strong{ font-size:20px; font-variant-numeric:tabular-nums; }
+  .mtd-disclaimer{ margin:2px 4px 0; font-size:10.5px; line-height:1.45; color:#6b7482; }
+  .mtd-actions{ flex:0 0 auto; display:flex; gap:10px; padding:12px 14px 22px; background:#fff; border-top:1px solid #e1e5eb; }
+  .mtd-btn{
+    flex:1; padding:13px 10px; border-radius:12px; border:2px solid #10284d;
+    background:#10284d; color:#fff;
+    font:800 13px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; letter-spacing:.1em;
+    cursor:pointer;
+  }
+  .mtd-btn:hover{ filter:brightness(1.15); }
+  .mtd-btn:focus-visible{ outline:3px solid #00a19a; outline-offset:2px; }
+  .mtd-btn-secondary{ background:#fff; color:#10284d; }
+  .mtd-btn-secondary:hover{ background:#eef1f5; filter:none; }
+  /* MTD form: report income and expenses, then send the payment */
+  .mtd-form{ display:flex; flex-direction:column; gap:16px; }
+  .mtd-form h3{ margin:0; }
+  .mtd-intro{ margin:2px 0 0; font-size:13px; line-height:1.45; color:#3d4553; }
+  .mtd-field{ display:flex; flex-direction:column; gap:6px; }
+  .mtd-field label{ font-size:14px; font-weight:800; }
+  .mtd-hint{ font-size:12px; line-height:1.4; color:#5b6472; }
+  .mtd-input-wrap{
+    display:flex; align-items:center;
+    border:2px solid #b9c1cc; border-radius:12px; background:#fff;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .mtd-input-wrap:focus-within{ border-color:#00a19a; box-shadow:0 0 0 4px rgba(0,161,154,.18); }
+  .mtd-input-wrap.invalid{ border-color:#c8252c; box-shadow:0 0 0 4px rgba(200,37,44,.12); }
+  .mtd-currency{ padding:0 4px 0 14px; font-size:17px; font-weight:800; color:#3d4553; }
+  .mtd-input{
+    flex:1; min-width:0; padding:13px 14px 13px 4px;
+    border:0; outline:none; background:transparent;
+    font:700 17px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    color:#14181f; font-variant-numeric:tabular-nums;
+  }
+  .mtd-error{ min-height:16px; font-size:12px; font-weight:700; color:#c8252c; }
+  .mtd-summary{ display:flex; justify-content:space-between; padding:12px 14px; border-radius:12px; background:#eef6f5; font-size:14px; font-weight:700; }
+  .mtd-send{
+    width:100%; padding:16px; border:0; border-radius:14px;
+    background:#00a19a; color:#fff;
+    font:800 15px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; letter-spacing:.02em;
+    cursor:pointer; box-shadow:0 6px 16px rgba(0,122,116,.3);
+  }
+  .mtd-send:hover:not(:disabled){ background:#008c86; }
+  .mtd-send:focus-visible{ outline:3px solid #10284d; outline-offset:2px; }
+  .mtd-send:disabled{ background:#c5ccd6; color:#6b7482; box-shadow:none; cursor:not-allowed; }
+  .mtd-success{ display:flex; gap:12px; align-items:flex-start; background:#e7f6ee; border:1px solid #9fd9b8; }
+  .mtd-success-icon{ flex:0 0 auto; display:grid; place-items:center; width:34px; height:34px; border-radius:50%; background:#0b7a4b; color:#fff; font-weight:900; }
+  .mtd-success strong{ display:block; font-size:15px; }
+  .mtd-success div span{ font-size:12.5px; color:#2f4a3b; }
+  /* "Congrats champ!" page (after the payment confirmation) */
+  .mtd-congrats{
+    flex:1; min-height:100%; box-sizing:border-box;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+    padding:40px 22px;
+  }
+  .mtd-congrats-icon{
+    display:grid; place-items:center; width:92px; height:92px; border-radius:50%;
+    background:#0b7a4b; box-shadow:0 0 0 12px #e7f6ee;
+    animation:mtdPop .45s cubic-bezier(.2,1.4,.4,1) both;
+  }
+  @keyframes mtdPop{ from{ transform:scale(.4); opacity:0; } }
+  .mtd-congrats-title{ margin:28px 0 6px; font-size:28px; font-weight:900; color:#10284d; }
+  .mtd-congrats-text{ margin:0; font-size:16px; line-height:1.45; color:#3d4553; }
+  @media (prefers-reduced-motion: reduce){ .mtd-congrats-icon{ animation:none; } }
+  @media (max-width:480px){
+    .mtd-overlay{ padding:0; }
+    .mtd-phone{ width:100vw; height:100vh; border:0; border-radius:0; box-shadow:none; }
+    .mtd-notch{ display:none; }
+  }
   .lb-empty{ color:var(--ink-dim); text-align:center; padding:20px 0; font-size:12.5px; }
 
   .hint{
@@ -486,7 +716,11 @@
 
   /* ---------- hub (sleek business landing) ---------- */
   .hub{
-    width:min(94vw, 500px);
+    width:min(92vw, 1040px);
+    /* Centred vertically while it fits the window; once taller (the game grid), it starts at the
+       top instead — plain centring would push the header above the top of the page, out of reach. */
+    align-self:flex-start;
+    margin-block:auto;
     display:flex;
     flex-direction:column;
     align-items:center;
@@ -507,13 +741,14 @@
   }
   .hub-eyebrow::after{ background:linear-gradient(90deg, var(--biz-accent-2), transparent); }
   .hub-title{
-    margin:8px 0 0;
-    font-size:clamp(32px,8vw,44px);
+    margin:10px 0 2px;
+    font-family:var(--font-display);
+    font-size:clamp(30px,7vw,46px);
     font-weight:800;
-    letter-spacing:-.02em;
+    letter-spacing:.05em;
     color:#ffffff;
     text-align:center;
-    text-shadow:0 2px 30px rgba(18,171,219,.45);
+    text-shadow:0 0 26px rgba(56,189,248,.55), 0 0 64px rgba(139,92,246,.35);
   }
   .hub-subtitle{
     margin:0 0 4px;
@@ -533,70 +768,108 @@
     font-size:11px;
     font-weight:600;
     letter-spacing:.02em;
-    color:#fff;
-    background:rgba(255,255,255,.12);
-    border:1px solid rgba(255,255,255,.22);
+    color:#e8eeff;
+    background:rgba(255,255,255,.07);
+    border:1px solid rgba(148,163,255,.28);
     backdrop-filter:blur(6px);
     border-radius:20px;
     padding:5px 12px;
   }
+  /* Animated gradient-mesh backdrop behind the hub: slow-drifting blue/purple/cyan light over deep
+     navy, plus a faint dot grid. It lives inside #hubScreen, so it disappears when a game starts. */
+  .hub-bg{
+    position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none;
+    background:
+      radial-gradient(120% 80% at 50% -10%, #1b2a6b 0%, transparent 60%),
+      linear-gradient(180deg, #070b1f 0%, #0b0f2e 55%, #05071a 100%);
+  }
+  .hub-bg span{
+    position:absolute; width:72vmax; height:72vmax; border-radius:50%;
+    mix-blend-mode:screen;
+    animation:meshDrift 40s ease-in-out infinite alternate;
+  }
+  .hub-bg span:nth-child(1){ top:-28vmax; left:-22vmax; background:radial-gradient(circle, rgba(59,130,246,.42), transparent 62%); }
+  .hub-bg span:nth-child(2){ bottom:-32vmax; right:-24vmax; background:radial-gradient(circle, rgba(139,92,246,.40), transparent 62%); animation-duration:48s; animation-delay:-14s; }
+  .hub-bg span:nth-child(3){ top:18%; left:28%; width:56vmax; height:56vmax; background:radial-gradient(circle, rgba(34,211,238,.20), transparent 64%); animation-duration:56s; animation-delay:-26s; }
+  .hub-bg::after{
+    content:''; position:absolute; inset:0;
+    background-image:radial-gradient(rgba(255,255,255,.07) 1px, transparent 1px);
+    background-size:28px 28px;
+    -webkit-mask-image:linear-gradient(180deg, rgba(0,0,0,.8), transparent 85%);
+            mask-image:linear-gradient(180deg, rgba(0,0,0,.8), transparent 85%);
+  }
+  @keyframes meshDrift{
+    0%  { transform:translate(0, 0) scale(1); }
+    50% { transform:translate(8vmax, 6vmax) scale(1.12); }
+    100%{ transform:translate(-6vmax, 10vmax) scale(.95); }
+  }
+
   .hub-panel{
     position:relative;
-    width:100%;
-    padding:28px 24px 24px;
-    border:1px solid var(--biz-border);
-    border-radius:18px;
-    background:var(--biz-surface);
-    box-shadow:0 30px 70px rgba(3,10,30,.35), 0 1px 0 rgba(15,23,42,.03);
+    width:min(100%, 540px);
+    padding:30px 30px 28px;
+    border:1.5px solid transparent;
+    border-radius:22px;
+    background:
+      linear-gradient(160deg, rgba(22,31,74,.84), rgba(11,16,44,.84)) padding-box,
+      linear-gradient(135deg, rgba(34,211,238,.85), rgba(139,92,246,.75) 55%, rgba(34,211,238,.22)) border-box;
+    -webkit-backdrop-filter:blur(16px);
+            backdrop-filter:blur(16px);
+    box-shadow:0 30px 70px rgba(2,6,23,.55), 0 0 46px rgba(56,189,248,.14);
     display:flex;
     flex-direction:column;
     gap:18px;
-    overflow:hidden;
   }
-  .hub-panel::before{
-    content:'';
-    position:absolute; top:0; left:0; right:0; height:4px;
-    background:linear-gradient(90deg, var(--biz-accent), var(--biz-accent-2), var(--biz-accent));
-    background-size:200% 100%;
-    animation:hubSheen 5s ease-in-out infinite;
+  .hub-field{ position:relative; display:flex; flex-direction:column; gap:10px; }
+  .hub-label{ font-size:11.5px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:rgba(191,219,254,.78); }
+  /* Chevron drawn by the label, so it can turn over while the list is open. */
+  .hub-field::after{
+    content:''; position:absolute; right:18px; bottom:24px; width:14px; height:9px; pointer-events:none;
+    background:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="9" viewBox="0 0 14 9" fill="none"><path d="M1 1L7 7L13 1" stroke="%2367e8f9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>') no-repeat center;
+    transition:transform .25s ease;
   }
-  .hub-panel.racing-demo{
-    border-color:rgba(245,158,11,.45);
-    box-shadow:0 30px 70px rgba(59,130,246,.18), 0 1px 0 rgba(15,23,42,.03);
-  }
-  .hub-panel.racing-demo::before{
-    background:linear-gradient(90deg, #f59e0b, #f97316, #facc15, #f59e0b);
-    background-size:240% 100%;
-  }
-  .hub-panel.racing-demo .hub-select{
-    border-color:rgba(245,158,11,.6);
-  }
-  .hub-panel.racing-demo .hub-start{
-    background:linear-gradient(135deg, #f59e0b, #f97316);
-    box-shadow:0 12px 28px rgba(249,115,22,.35);
-  }
-  @keyframes hubSheen{
-    0%,100%{ background-position:0% 0; }
-    50%{ background-position:100% 0; }
-  }
-  .hub-field{ display:flex; flex-direction:column; gap:8px; }
-  .hub-label{ font-size:11.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--biz-sub); }
   .hub-select{
     font-family:var(--font-sans);
     font-size:16px;
     font-weight:600;
-    color:var(--biz-navy);
-    background:var(--biz-surface-2) url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="9" viewBox="0 0 14 9" fill="none"><path d="M1 1L7 7L13 1" stroke="%230070AD" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>') no-repeat right 16px center;
-    border:1.5px solid var(--biz-border);
-    border-radius:12px;
-    padding:16px 44px 16px 16px;
+    color:#f1f5ff;
+    background:rgba(255,255,255,.06);
+    border:1.5px solid rgba(148,163,255,.28);
+    border-radius:14px;
+    padding:16px 48px 16px 18px;
     appearance:none;
     -webkit-appearance:none;
     cursor:pointer;
-    transition:border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+    transition:border-color .2s ease, box-shadow .2s ease, background-color .2s ease;
   }
-  .hub-select:hover{ border-color:var(--biz-border-strong); background-color:#fff; }
-  .hub-select:focus{ outline:none; border-color:var(--biz-accent); box-shadow:0 0 0 4px var(--biz-accent-dim); }
+  .hub-select:hover{ border-color:rgba(125,211,252,.6); background-color:rgba(255,255,255,.09); }
+  .hub-select:focus{ outline:none; border-color:#22d3ee; box-shadow:0 0 0 4px rgba(34,211,238,.18), 0 0 24px rgba(34,211,238,.22); }
+  .hub-select option{ background:#0d1433; color:#f1f5ff; }
+  /* Where the browser supports customizable selects (Chrome/Edge 135+), the option list itself is
+     styled and fades/slides open; elsewhere it stays the browser's native list. */
+  @supports (appearance: base-select){
+    .hub-select, .hub-select::picker(select){ appearance:base-select; }
+    .hub-select::picker-icon{ display:none; }
+    .hub-select::picker(select){
+      margin-top:8px;
+      padding:6px;
+      border:1px solid rgba(125,211,252,.35);
+      border-radius:14px;
+      background:rgba(10,16,42,.97);
+      box-shadow:0 24px 50px rgba(2,6,23,.6), 0 0 30px rgba(56,189,248,.16);
+      opacity:0;
+      transform:translateY(-6px) scale(.98);
+      transform-origin:top center;
+      transition:opacity .22s ease, transform .22s ease, overlay .22s allow-discrete, display .22s allow-discrete;
+    }
+    .hub-select:open::picker(select){ opacity:1; transform:none; }
+    @starting-style{ .hub-select:open::picker(select){ opacity:0; transform:translateY(-6px) scale(.98); } }
+    .hub-select option{ padding:10px 12px; border-radius:9px; background:transparent; font-size:15px; }
+    .hub-select option:hover, .hub-select option:focus-visible{ background:rgba(56,189,248,.16); outline:none; }
+    .hub-select option:checked{ background:rgba(139,92,246,.30); }
+    .hub-select option::checkmark{ color:#67e8f9; }
+    .hub-field:has(.hub-select:open)::after{ transform:rotate(180deg); }
+  }
   .hub-desc{ margin:0; font-size:12.5px; line-height:1.6; color:var(--biz-sub); }
   .hub-start{
     margin-top:2px;
@@ -623,6 +896,35 @@
     box-shadow:none;
   }
   .hub-start-secondary:hover{ background:var(--biz-surface-2); transform:none; box-shadow:none; }
+
+  /* ---------- game picker: picture tiles, 3 per row, the page scrolls through them ---------- */
+  .games-heading{
+    margin:36px 0 20px;
+    display:flex; align-items:center; gap:12px;
+    font-family:var(--font-display);
+    font-size:14px; font-weight:700; letter-spacing:.24em; text-transform:uppercase;
+    color:#e0f2fe;
+    text-shadow:0 0 18px rgba(56,189,248,.55);
+  }
+  .games-heading::before, .games-heading::after{
+    content:''; width:48px; height:2px; border-radius:2px;
+    background:linear-gradient(90deg, transparent, #22d3ee);
+    box-shadow:0 0 10px rgba(34,211,238,.6);
+  }
+  .games-heading::after{ background:linear-gradient(90deg, #a78bfa, transparent); box-shadow:0 0 10px rgba(167,139,250,.6); }
+  .game-grid{
+    width:100%;
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:28px;
+    padding:0 4px;
+  }
+  @media (max-width:640px){ .game-grid{ grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; padding:0; } }
+  /* Tile styles themselves are in game-tiles.css (shared with the HMRC job picker). */
+  @media (prefers-reduced-motion: reduce){
+    .hub-bg span{ animation:none; }
+    .hub-field::after{ transition:none; }
+  }
   .hub-hint{
     margin-top:10px;
     font-size:11.5px;
@@ -912,13 +1214,14 @@
 </style>
 
 <div class="hub" id="hubScreen">
+  <div class="hub-bg" aria-hidden="true"><span></span><span></span><span></span></div>
   <div class="hub-eyebrow">Certification Revision Platform</div>
   <h1 class="hub-title">Exam Hub</h1>
   <div class="hub-subtitle">Structured practice for technical certification exams</div>
   <div class="hub-stats">
-    <span class="hub-stat-pill">5 Subjects</span>
-    <span class="hub-stat-pill">6 Modes</span>
-    <span class="hub-stat-pill">100 Questions</span>
+    <span class="hub-stat-pill" id="statSubjects">7 Subjects</span>
+    <span class="hub-stat-pill" id="statGames">9 Games</span>
+    <span class="hub-stat-pill" id="statQuestions">140 Questions</span>
   </div>
 
   <div class="hub-panel">
@@ -932,26 +1235,13 @@
         <option value="uktax">UK Tax Fundamentals</option>
         <option value="istqb">ISTQB Foundation</option>
         <option value="saasinfra">SaaS Infrastructure</option>
+        <option value="dynatrace">Dynatrace Associate</option>
       </select>
     </label>
-    <label class="hub-field">
-      <span class="hub-label">Mode</span>
-      <select id="selMode" class="hub-select">
-        <option value="exam">Exam Mode</option>
-        <option value="arcade">Space Invaders Arcade Mode</option>
-        <option value="penalty">Football Arcade Mode</option>
-        <option value="pacman">Pac-Man Arcade Mode</option>
-        <option value="forest">Street Adventure</option>
-        <option value="racing-demo">Racing Game</option>
-        <option value="hmrc">HMRC Mode</option>
-        <option value="tax-battle">Tax Quest Battle</option>
-        <option value="chess">Chess</option>
-        <option value="race">Online Multiplayer Race</option>
-      </select>
-    </label>
-    <p class="hub-desc" id="hubDesc"></p>
-    <button class="hub-start" id="btnStart" type="button">Begin&nbsp;→</button>
   </div>
+
+  <div class="games-heading" id="gamesHeading">Choose a game</div>
+  <div class="game-grid" id="gameGrid" role="list" aria-labelledby="gamesHeading"></div>
 
   <div class="hub-hint">20 questions per subject &nbsp;·&nbsp; 5 topic categories &nbsp;·&nbsp; exam pass mark 75%</div>
 </div>
@@ -1109,6 +1399,7 @@
     <button class="corner-btn" id="btnPenHint">HINT: OFF</button>
     <button class="corner-btn" id="btnPenHub">◄ HUB</button>
     <button class="corner-btn" id="btnPenScores">🏆 TOP</button>
+    <button class="pay-btn" id="btnPenPay" type="button" hidden>£ See Payment Information</button>
   </div>
 
   <div class="hint">CLICK OR TAP A GOAL ZONE TO SHOOT&nbsp;&nbsp;·&nbsp;&nbsp;<b>1-4</b> PICK A ZONE&nbsp;&nbsp;·&nbsp;&nbsp;<b>ENTER</b> SHOOT&nbsp;/&nbsp;START<br>PICK THE ZONE SHOWING THE CORRECT ANSWER TO SCORE A GOAL</div>
@@ -1332,4 +1623,28 @@
   </div>
 </div>
 
-<script type="module" src="./arcade-module/main.js?v=2"></script>
+<div class="hs-overlay" id="payModal" style="display:none">
+  <div class="payslip" id="payslipDoc" role="dialog" aria-modal="true" aria-labelledby="payslipTitle" tabindex="-1"></div>
+</div>
+
+<!-- Self-employed players' "payment information": a phone-style Making Tax Digital app simulation. -->
+<div class="mtd-overlay" id="mtdModal" style="display:none">
+  <div class="mtd-phone" role="dialog" aria-modal="true" aria-labelledby="mtdTitle">
+    <div class="mtd-statusbar" aria-hidden="true"><span id="mtdClock">09:41</span><span class="mtd-notch"></span><span>5G ▮▮▮ ▭</span></div>
+    <header class="mtd-appbar">
+      <div class="mtd-brand">
+        <span class="mtd-logo" aria-hidden="true">MTD</span>
+        <div><div class="mtd-title" id="mtdTitle">HMRC — Manage your Self Assessment</div><div class="mtd-sub">Making Tax Digital · game simulation</div></div>
+      </div>
+      <div class="mtd-greeting" id="mtdGreeting"></div>
+      <div class="mtd-utr">Self-employed · UTR 12345 67890</div>
+    </header>
+    <main class="mtd-screen" id="mtdScreen"></main>
+    <nav class="mtd-actions">
+      <button type="button" class="mtd-btn mtd-btn-secondary" id="mtdAgainBtn">PLAY AGAIN</button>
+      <button type="button" class="mtd-btn" id="mtdNextBtn">NEXT →</button>
+    </nav>
+  </div>
+</div>
+
+<script type="module" src="./arcade-module/main.js?v=15"></script>

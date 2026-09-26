@@ -1,4 +1,4 @@
-import { SUBJECTS } from '../question-bank.js';
+import { SUBJECTS } from '../question-bank.js?v=2';
 
 const onboardingOverlay = document.getElementById('onboardingOverlay');
 const onboardingForm = document.getElementById('onboardingForm');
@@ -23,6 +23,7 @@ const questionTextEl = document.getElementById('questionText');
 const answerGridEl = document.getElementById('answerGrid');
 const btnNextEncounter = document.getElementById('btnNextEncounter');
 const btnTryAgain = document.getElementById('btnTryAgain');
+const btnLeaveBattle = document.getElementById('btnLeaveBattle');
 const worldPanel = document.getElementById('worldPanel');
 const battlePanel = document.getElementById('battlePanel');
 const worldCanvas = document.getElementById('worldCanvas');
@@ -202,10 +203,26 @@ function setDialogue(message) {
   dialogueBox.textContent = message;
 }
 
+// The walkable field is a Phaser scene (phaser-route.js, scene 'RouteScene') that would otherwise
+// keep running while its panel is hidden — arrow keys pressed during a battle would walk the
+// trainer around out of sight. It's paused for battles and resumed on the way back, with any keys
+// that were held down released so the trainer doesn't keep walking.
+function setFieldActive(active) {
+  const scene = window.phaserRouteGame && window.phaserRouteGame.scene && window.phaserRouteGame.scene.getScene('RouteScene');
+  if (!scene || !scene.sys || !scene.sys.settings) return;
+  if (active) {
+    if (scene.scene.isPaused()) scene.scene.resume();
+    if (scene.input && scene.input.keyboard) scene.input.keyboard.resetKeys();
+  } else if (scene.scene.isActive()) {
+    scene.scene.pause();
+  }
+}
+
 function showWorld() {
   worldPanel.classList.remove('hidden');
   battlePanel.classList.add('hidden');
   state.inBattle = false;
+  setFieldActive(true);
   updateWorldHud();
 }
 
@@ -213,6 +230,29 @@ function showBattle() {
   worldPanel.classList.add('hidden');
   battlePanel.classList.remove('hidden');
   state.inBattle = true;
+  setFieldActive(false);
+}
+
+// After an answer the next question is queued with a short delay; leaving the battle cancels it.
+let nextEncounterTimer = null;
+const queueNextEncounter = (delay) => {
+  clearTimeout(nextEncounterTimer);
+  nextEncounterTimer = setTimeout(() => {
+    nextEncounterTimer = null;
+    if (state.inBattle) beginEncounter();
+  }, delay);
+};
+
+// "Back to the field": leave the battle (nothing is lost — XP, badges and HP stay as they are) and
+// return to walking the route where the trainer left off.
+function leaveBattle() {
+  if (!state.inBattle) return;
+  clearTimeout(nextEncounterTimer);
+  nextEncounterTimer = null;
+  state.world.lastEncounter = Date.now();
+  showWorld();
+  worldMessageEl.textContent = 'You left the battle. Walk the route with WASD or arrow keys. Press Enter to start a battle.';
+  if (document.activeElement) document.activeElement.blur(); // so Enter doesn't press a hidden button
 }
 
 function updateWorldHud() {
@@ -621,18 +661,14 @@ function handleAnswer(index) {
       return;
     }
 
-    setTimeout(() => {
-      beginEncounter();
-    }, 1400);
+    queueNextEncounter(1400);
     return;
   }
 
   setDialogue(`Not quite. The right answer is: ${state.currentQuestion.answers[state.currentQuestion.correct]}`);
   finishBattle(false);
 
-  setTimeout(() => {
-    beginEncounter();
-  }, 1500);
+  queueNextEncounter(1500);
 }
 
 function validateForm() {
@@ -684,6 +720,8 @@ btnNextEncounter.addEventListener('click', () => {
   showBattle();
 });
 
+btnLeaveBattle.addEventListener('click', leaveBattle);
+
 btnTryAgain.addEventListener('click', () => {
   state.playerHp = 100;
   state.xp = Math.max(0, state.xp - 10);
@@ -700,7 +738,10 @@ document.getElementById('btnReset').addEventListener('click', () => {
 });
 
 window.addEventListener('keydown', (event) => {
-  if (state.inBattle) return;
+  if (state.inBattle) {
+    if (event.key === 'Escape') leaveBattle(); // keyboard shortcut for "Back to the field"
+    return;
+  }
   if (event.key === 'Enter') {
     triggerEncounterOnDemand();
     return;
