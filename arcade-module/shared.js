@@ -500,6 +500,22 @@ function closeLeaderboard(){
 lbCloseBtnEl.addEventListener('click', closeLeaderboard);
 lbModalEl.addEventListener('pointerdown', e=>{ if(e.target===lbModalEl) closeLeaderboard(); });
 
+// ---------- text ----------
+// Splits `text` into lines that fit `maxWidth` in the canvas context's current font (used for the
+// answer labels in Football Penalties and Pac-Man).
+export function wrapTextLines(dctx, text, maxWidth){
+  const words = text.split(' ');
+  const lines = [];
+  let cur = '';
+  for(const w of words){
+    const test = cur ? cur+' '+w : w;
+    if(dctx.measureText(test).width > maxWidth && cur){ lines.push(cur); cur = w; }
+    else cur = test;
+  }
+  if(cur) lines.push(cur);
+  return lines;
+}
+
 // ---------- session salary + payment information ----------
 // A game can award the player a gross annual salary (Football Penalties: £15,000 per goal). The
 // latest award is kept for the browser session by player-session.js:

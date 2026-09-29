@@ -1,5 +1,5 @@
 import { createHMRCGame } from './three-game.js?v=4';
-import { createJobPicker } from './job-picker.js?v=3';
+import { createJobPicker } from './job-picker.js?v=4';
 import { getHmrcUser, saveHmrcUser, getHmrcReturn, saveHmrcReturn } from '../player-session.js?v=1';
 
 // The Welcome answers (incl. employment status) and the stall the player left from are kept for

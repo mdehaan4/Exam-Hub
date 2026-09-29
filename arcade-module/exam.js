@@ -1,7 +1,7 @@
 // Exam mode: linear mock-exam flow with review/history.
 
-import { SUBJECTS, pctOf, shuffleAnswerOptions, shuffleArray, G } from './shared.js?v=15';
-import { examScreenEl, goToHub, scoreEl, showScreen } from './arcade.js?v=15';
+import { SUBJECTS, pctOf, shuffleAnswerOptions, shuffleArray, G } from './shared.js?v=17';
+import { examScreenEl, goToHub, scoreEl, showScreen } from './arcade.js?v=17';
 
 // ---------- exam mode ----------
 let examQuestions = [];

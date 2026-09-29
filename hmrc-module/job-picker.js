@@ -6,7 +6,7 @@
 // The games come from game-list.js — the same list and tiles as the hub — so new games appear here
 // automatically. HMRC Mode itself is left out, since the player is already in it.
 
-import { GAMES, gameUrl, createGameTile } from '../game-list.js?v=1';
+import { GAMES, gameUrl, createGameTile } from '../game-list.js?v=2';
 import { saveHmrcReturn } from '../player-session.js?v=1';
 
 export function createJobPicker({ subject, onOpenChange = () => {} }) {

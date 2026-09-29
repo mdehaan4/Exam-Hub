@@ -5,15 +5,15 @@
 // (they must match exactly — a file imported under two different URLs would load twice, with two
 // separate copies of its state).
 
-import { ensureAudio, resizeCanvas } from './shared.js?v=15';
-import { frame, showScreen, startArcade } from './arcade.js?v=15';
-import { startForestMode } from './forest.js?v=15';
-import { startExam } from './exam.js?v=15';
-import { startPenalty, resizePenaltyCanvas } from './penalty.js?v=15';
-import { startPacman, resizePacCanvas } from './pacman.js?v=15';
-import { RACE_LINK_MARKER, raceExtractCode, raceStartJoin, raceSupported, startRace } from './race.js?v=15';
-import { selSubject, SUBJECTS } from './shared.js?v=15';
-import { GAMES, findGame, createGameTile } from '../game-list.js?v=1';
+import { ensureAudio, resizeCanvas } from './shared.js?v=17';
+import { frame, showScreen, startArcade } from './arcade.js?v=17';
+import { startForestMode } from './forest.js?v=17';
+import { startExam } from './exam.js?v=17';
+import { startPenalty, resizePenaltyCanvas } from './penalty.js?v=17';
+import { startPacman, resizePacCanvas } from './pacman.js?v=17';
+import { RACE_LINK_MARKER, raceExtractCode, raceStartJoin, raceSupported, startRace } from './race.js?v=17';
+import { selSubject, SUBJECTS } from './shared.js?v=17';
+import { GAMES, findGame, createGameTile } from '../game-list.js?v=2';
 
 window.addEventListener('resize', () => { resizeCanvas(); resizePenaltyCanvas(); resizePacCanvas(); });
 

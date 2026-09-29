@@ -24,7 +24,7 @@ export const GAMES = [
     desc: 'Launch the standalone browser racing game with a chase camera, drifting car handling, and modern 3D visuals.' },
   { id: 'hmrc', title: 'HMRC Mode', glow: '#e879f9', page: './hmrc-mode.html',
     desc: 'A top-down, Pokémon-style walkabout: explore an indoor fairground hall on foot with WASD or the arrow keys. (Early build — just the hall and movement for now.)' },
-  { id: 'tax-battle', title: 'Tax Quest Battle', glow: '#a78bfa', page: './tax-battle-mode.html',
+  { id: 'tax-battle', title: 'Quest Battle', glow: '#a78bfa', page: './tax-battle-mode.html',
     desc: 'A Pokémon-inspired quiz battle: a trainer explores encounters, answers tax and tech questions, and wins badges by picking the correct answer in a turn-based fight.' },
   { id: 'chess', title: 'Chess', glow: '#e5c07b', page: './chess.html',
     desc: 'Two-player chess where every turn starts with a question from the selected subject: answer correctly to make your move, answer wrongly and your turn passes to your opponent. Play on one screen or online with a room code.' },

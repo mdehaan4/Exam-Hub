@@ -208,6 +208,18 @@
         cursor: pointer;
       }
 
+      .hub-link {
+        text-decoration: none;
+        font-weight: 700;
+        color: #ffe08a;
+      }
+
+      .ghost-btn:hover,
+      .hub-link:focus-visible {
+        border-color: rgba(255,255,255,0.35);
+        outline: none;
+      }
+
       .arena {
         display: grid;
         grid-template-columns: 280px minmax(0, 1fr);
@@ -664,6 +676,7 @@
         </div>
 
         <div class="topbar-actions">
+          <a class="ghost-btn hub-link" href="./index.html" title="Back to the Exam Hub home page">← Hub</a>
           <span id="subjectPill" class="pill">UK Tax</span>
           <button id="btnReset" class="ghost-btn" type="button">New trainer</button>
         </div>

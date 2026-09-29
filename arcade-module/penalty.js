@@ -4,10 +4,10 @@ import {
   COLORS, FONT_MONO, SUBJECTS, clamp, drawParticleList, drawPixelText, drawPopupList, ensureAudio,
   hexToRgba, loadHighScore, modalOpen, openHighScoreEntry, openLeaderboard, pctOf,
   qualifiesForLeaderboard, roundRect, saveHighScore, sfx, shuffleAnswerOptions, shuffleArray,
-  saveSessionSalary, openPaymentInfo, formatGBP,
+  saveSessionSalary, openPaymentInfo, formatGBP, wrapTextLines,
   spawnExplosionInto, spawnPopupInto, updateParticleList, updatePopupList, G,
-} from './shared.js?v=15';
-import { btnMute, goToHub, showScreen, toggleHint } from './arcade.js?v=15';
+} from './shared.js?v=17';
+import { btnMute, goToHub, showScreen, toggleHint } from './arcade.js?v=17';
 
 // ---------- penalty shootout mode ----------
 const PEN_LOGICAL_W = 600, PEN_LOGICAL_H = 440;
@@ -180,18 +180,6 @@ export function updatePenalty(dt){
   }
 }
 
-export function wrapTextLines(dctx, text, maxWidth){
-  const words = text.split(' ');
-  const lines = [];
-  let cur = '';
-  for(const w of words){
-    const test = cur ? cur+' '+w : w;
-    if(dctx.measureText(test).width > maxWidth && cur){ lines.push(cur); cur = w; }
-    else cur = test;
-  }
-  if(cur) lines.push(cur);
-  return lines;
-}
 
 function drawPenaltySky(dctx){
   const grad = dctx.createLinearGradient(0,0,0,GOAL.y+GOAL.h+20);
